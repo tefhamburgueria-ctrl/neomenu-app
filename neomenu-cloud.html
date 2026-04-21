@@ -1,0 +1,1646 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>NeoMenu Cloud | Sistema Completo</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+    
+    <!-- Biblioteca para gerar QR Code -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f0f2f8;
+            color: #1e293b;
+            transition: all 0.3s ease;
+        }
+        
+        :root {
+            --primary-color: #f97316;
+            --primary-dark: #dc2626;
+            --sidebar-bg: #1e293b;
+            --card-bg: #ffffff;
+            --text-color: #1e293b;
+            --border-color: #eef2f8;
+        }
+        
+        body.dark-mode {
+            --sidebar-bg: #0f172a;
+            --card-bg: #1e293b;
+            --text-color: #e2e8f0;
+            --border-color: #334155;
+        }
+        
+        .admin-container { display: flex; min-height: 100vh; }
+        
+        aside {
+            background: var(--sidebar-bg);
+            width: 280px;
+            position: fixed;
+            height: 100vh;
+            padding: 28px 16px;
+            color: white;
+            overflow-y: auto;
+            transition: background 0.3s ease;
+        }
+        
+        main {
+            flex: 1;
+            margin-left: 280px;
+            padding: 32px 36px;
+        }
+        
+        .panel {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+        
+        .grid-2 { display: grid; grid-template-columns: 1fr 380px; gap: 28px; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+        
+        .pdv-items {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 16px;
+            max-height: 550px;
+            overflow-y: auto;
+        }
+        
+        .item-card {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 12px;
+            text-align: center;
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: 0.2s;
+            position: relative;
+        }
+        
+        .item-card:hover { transform: translateY(-4px); border-color: var(--primary-color); box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
+        
+        .item-card img {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 50%;
+            margin-bottom: 8px;
+        }
+        
+        .badge-estoque {
+            position: absolute;
+            top: 8px;
+            right: 12px;
+            background: var(--sidebar-bg);
+            color: white;
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 30px;
+        }
+        
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            margin: 6px 0;
+            font-size: 14px;
+            background: var(--card-bg);
+            color: var(--text-color);
+        }
+        
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 40px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        
+        .btn-primary { background: linear-gradient(135deg, var(--primary-color), var(--primary-dark)); color: white; width: 100%; }
+        .btn-secondary { background: #64748b; color: white; }
+        .btn-success { background: #10b981; color: white; }
+        .btn-danger { background: #ef4444; color: white; padding: 4px 12px; border-radius: 40px; cursor: pointer; border: none; }
+        
+        .cart-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .total-price { font-size: 1.8rem; font-weight: 800; color: var(--primary-color); text-align: right; margin: 16px 0; }
+        .hidden { display: none !important; }
+        
+        .sync-status {
+            background: #10b981;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 40px;
+            font-size: 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .sync-status.offline { background: #ef4444; }
+        
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            border-radius: 12px;
+            cursor: pointer;
+            margin: 6px 0;
+            color: #94a3b8;
+            transition: 0.2s;
+        }
+        
+        .nav-link:hover { background: rgba(255,255,255,0.1); }
+        .nav-link.active { background: var(--primary-color); color: white; }
+        
+        .login-container {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+        
+        .login-box {
+            background: white;
+            width: 360px;
+            text-align: center;
+            padding: 40px;
+            border-radius: 24px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+        }
+        
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 52px;
+            height: 28px;
+        }
+        
+        .switch input { opacity: 0; width: 0; height: 0; }
+        
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #cbd5e1;
+            transition: 0.3s;
+            border-radius: 34px;
+        }
+        
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 22px;
+            width: 22px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: 0.3s;
+            border-radius: 50%;
+        }
+        
+        input:checked + .slider { background-color: var(--primary-color); }
+        input:checked + .slider:before { transform: translateX(24px); }
+        
+        .toggle-group {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .photo-preview {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin: 10px auto;
+            display: block;
+            border: 2px solid var(--primary-color);
+        }
+        
+        .order-card {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 20px;
+            border-left: 4px solid var(--primary-color);
+            margin-bottom: 15px;
+        }
+        
+        .order-card.pending { border-left-color: #f59e0b; }
+        .order-card.preparing { border-left-color: #3b82f6; }
+        .order-card.ready { border-left-color: #10b981; }
+        
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+        
+        .order-status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .status-pending { background: #fef3c7; color: #d97706; }
+        .status-preparing { background: #dbeafe; color: #2563eb; }
+        .status-ready { background: #d1fae5; color: #059669; }
+        
+        .order-items {
+            margin: 15px 0;
+            padding: 10px;
+            background: var(--border-color);
+            border-radius: 12px;
+        }
+        
+        .order-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .order-actions button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 40px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        
+        .btn-preparing { background: #3b82f6; color: white; }
+        .btn-ready { background: #10b981; color: white; }
+        .btn-whatsapp { background: #25D366; color: white; }
+        
+        .badge-online { background: #10b981; color: white; padding: 2px 8px; border-radius: 20px; font-size: 10px; }
+        .badge-balcao { background: #f59e0b; color: white; padding: 2px 8px; border-radius: 20px; font-size: 10px; }
+        
+        .filter-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .filter-btn {
+            padding: 8px 16px;
+            border: 1px solid var(--border-color);
+            background: var(--card-bg);
+            border-radius: 40px;
+            cursor: pointer;
+        }
+        
+        .filter-btn.active {
+            background: var(--primary-color);
+            color: white;
+        }
+        
+        .cashier-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-box {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 15px;
+            text-align: center;
+            border: 1px solid var(--border-color);
+        }
+        
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: var(--primary-color);
+        }
+        
+        .transaction-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .transaction-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .short-link-box {
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+            border-radius: 16px;
+            padding: 20px;
+            margin-top: 20px;
+            text-align: center;
+        }
+        
+        .whatsapp-btn {
+            background: #25D366;
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 50px;
+            font-weight: 700;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+        }
+        
+        @media (max-width: 768px) {
+            .grid-2 { grid-template-columns: 1fr; }
+            main { margin-left: 0; padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- TELA DE LOGIN -->
+<div id="page-login" class="login-container">
+    <div class="login-box">
+        <h2 style="font-size: 2rem; margin-bottom: 8px;">☁️ NeoMenu Cloud</h2>
+        <p style="margin-bottom: 28px; color: #64748b;">Sistema de Gestão Profissional</p>
+        <input type="text" id="log-user" placeholder="Usuário" value="admin">
+        <input type="password" id="log-pass" placeholder="Senha" value="123">
+        <div id="login-error" style="color:#ef4444; margin: 10px 0; font-size: 14px;"></div>
+        <button class="btn btn-primary" id="login-btn"><i class="fas fa-sign-in-alt"></i> Entrar</button>
+    </div>
+</div>
+
+<!-- SISTEMA ADMIN -->
+<div id="view-admin" class="admin-container hidden">
+    <aside>
+        <h2 style="margin-bottom: 20px;">🍽️ NeoMenu Cloud</h2>
+        <div id="sync-status" class="sync-status">🔄 Conectando...</div>
+        <nav style="margin-top: 20px;">
+            <div class="nav-link active" data-tab="pdv"><i class="fas fa-cash-register"></i> PDV / Vendas</div>
+            <div class="nav-link" data-tab="pedidos"><i class="fas fa-clipboard-list"></i> Pedidos <span id="pending-badge" style="display:none;">0</span></div>
+            <div class="nav-link" data-tab="caixa"><i class="fas fa-coins"></i> Fechamento de Caixa</div>
+            <div class="nav-link" data-tab="vendas"><i class="fas fa-history"></i> Histórico</div>
+            <div class="nav-link" data-tab="cardapio"><i class="fas fa-utensils"></i> Cardápio</div>
+            <div class="nav-link" data-tab="pagamentos"><i class="fas fa-credit-card"></i> Pagamentos</div>
+            <div class="nav-link" data-tab="minhaloja"><i class="fas fa-store"></i> Minha Loja</div>
+            <div class="nav-link" data-tab="configuracoes"><i class="fas fa-cog"></i> Configurações</div>
+            <div class="nav-link" id="logout-btn" style="margin-top: 40px; color:#ef4444;"><i class="fas fa-sign-out-alt"></i> Sair</div>
+        </nav>
+    </aside>
+
+    <main>
+        <!-- PDV -->
+        <div id="tab-pdv" class="tab-content">
+            <div class="grid-2">
+                <div class="panel">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3><i class="fas fa-utensils"></i> Cardápio</h3>
+                        <input type="text" id="search-pdv" placeholder="🔍 Buscar produto..." style="width: 200px; margin: 0;">
+                    </div>
+                    <div id="pdv-menu" class="pdv-items"></div>
+                </div>
+                <div class="panel">
+                    <h3><i class="fas fa-shopping-cart"></i> Carrinho</h3>
+                    <div id="cart-list" style="min-height: 200px; max-height: 350px; overflow-y: auto;"></div>
+                    <input type="text" id="customer-name" placeholder="Cliente / Mesa *">
+                    <select id="payment-method">
+                        <option value="Dinheiro">💰 Dinheiro</option>
+                        <option value="Pix">📱 Pix</option>
+                        <option value="Crédito">💳 Cartão Crédito</option>
+                        <option value="Débito">💳 Cartão Débito</option>
+                    </select>
+                    <div class="total-price" id="cart-total">R$ 0,00</div>
+                    <button class="btn btn-primary" id="finalize-sale"><i class="fas fa-check-circle"></i> Finalizar Venda</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- PEDIDOS -->
+        <div id="tab-pedidos" class="tab-content hidden">
+            <div class="grid-2">
+                <div class="panel">
+                    <h3><i class="fas fa-clipboard-list"></i> Pedidos Ativos</h3>
+                    <div class="filter-buttons">
+                        <button class="filter-btn active" data-filter="all">📋 Todos</button>
+                        <button class="filter-btn" data-filter="online">📱 Online</button>
+                        <button class="filter-btn" data-filter="manual">🏪 Balcão</button>
+                    </div>
+                    <div id="active-orders-list" style="max-height: 600px; overflow-y: auto;"></div>
+                </div>
+                <div class="panel">
+                    <h3><i class="fas fa-plus-circle"></i> Novo Pedido</h3>
+                    <input type="text" id="manual-customer" placeholder="Nome do cliente *">
+                    <input type="text" id="manual-phone" placeholder="Telefone (WhatsApp)">
+                    <div id="manual-items-list" style="max-height: 200px; overflow-y: auto; margin: 10px 0; border: 1px solid var(--border-color); border-radius: 12px; padding: 10px;"></div>
+                    <div style="display: flex; gap: 10px;">
+                        <select id="manual-product" style="flex: 2;">
+                            <option value="">Selecione um produto</option>
+                        </select>
+                        <input type="number" id="manual-qty" placeholder="Qtd" style="width: 80px;" value="1">
+                        <button class="btn-primary" id="add-manual-item" style="width: auto; padding: 12px;"><i class="fas fa-plus"></i></button>
+                    </div>
+                    <select id="manual-payment">
+                        <option value="Dinheiro">💰 Dinheiro</option>
+                        <option value="Pix">📱 Pix</option>
+                        <option value="Crédito">💳 Cartão Crédito</option>
+                        <option value="Débito">💳 Cartão Débito</option>
+                    </select>
+                    <select id="manual-type">
+                        <option value="Consumo">🍽️ Consumo no Local</option>
+                        <option value="Retirada">🏪 Retirada no Local</option>
+                        <option value="Delivery">🚚 Delivery</option>
+                    </select>
+                    <div id="manual-address-field" style="display: none;">
+                        <input type="text" id="manual-address" placeholder="Endereço de entrega">
+                    </div>
+                    <div class="total-price" id="manual-total">R$ 0,00</div>
+                    <button class="btn btn-primary" id="create-manual-order"><i class="fas fa-save"></i> Criar Pedido</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- FECHAMENTO DE CAIXA -->
+        <div id="tab-caixa" class="tab-content hidden">
+            <div class="panel">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h3><i class="fas fa-coins"></i> Fechamento de Caixa</h3>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="date" id="cashier-date" style="width: auto;">
+                        <button class="btn-secondary" id="filter-date"><i class="fas fa-calendar"></i> Filtrar</button>
+                        <button class="btn-primary" id="print-cashier-report" style="width: auto;"><i class="fas fa-print"></i> Imprimir Relatório</button>
+                    </div>
+                </div>
+                
+                <div class="cashier-stats">
+                    <div class="stat-box">
+                        <i class="fas fa-arrow-up" style="color: #10b981; font-size: 1.5rem;"></i>
+                        <h4>Total de Entradas</h4>
+                        <div class="stat-value" id="total-entradas">R$ 0,00</div>
+                    </div>
+                    <div class="stat-box">
+                        <i class="fas fa-arrow-down" style="color: #ef4444; font-size: 1.5rem;"></i>
+                        <h4>Total de Saídas</h4>
+                        <div class="stat-value" id="total-saidas">R$ 0,00</div>
+                    </div>
+                    <div class="stat-box">
+                        <i class="fas fa-wallet" style="color: #f59e0b; font-size: 1.5rem;"></i>
+                        <h4>Saldo do Dia</h4>
+                        <div class="stat-value" id="saldo-dia">R$ 0,00</div>
+                    </div>
+                    <div class="stat-box">
+                        <i class="fas fa-chart-line" style="color: #8b5cf6; font-size: 1.5rem;"></i>
+                        <h4>Total de Pedidos</h4>
+                        <div class="stat-value" id="total-pedidos">0</div>
+                    </div>
+                </div>
+                
+                <div class="grid-3" style="margin-bottom: 20px;">
+                    <div class="panel">
+                        <h4><i class="fas fa-money-bill"></i> Dinheiro</h4>
+                        <div id="total-dinheiro" style="font-size: 1.5rem; font-weight: 800; color: var(--primary-color);">R$ 0,00</div>
+                    </div>
+                    <div class="panel">
+                        <h4><i class="fab fa-pix"></i> Pix</h4>
+                        <div id="total-pix" style="font-size: 1.5rem; font-weight: 800; color: var(--primary-color);">R$ 0,00</div>
+                    </div>
+                    <div class="panel">
+                        <h4><i class="fas fa-credit-card"></i> Cartões</h4>
+                        <div id="total-cartoes" style="font-size: 1.5rem; font-weight: 800; color: var(--primary-color);">R$ 0,00</div>
+                    </div>
+                </div>
+                
+                <div class="grid-2">
+                    <div class="panel">
+                        <h3><i class="fas fa-exchange-alt"></i> Movimentações do Dia</h3>
+                        <div class="filter-buttons">
+                            <button class="filter-btn active" id="show-all-transactions">Todos</button>
+                            <button class="filter-btn" id="show-entradas">Entradas</button>
+                            <button class="filter-btn" id="show-saidas">Saídas</button>
+                        </div>
+                        <div id="transactions-list" class="transaction-list" style="max-height: 400px; overflow-y: auto;"></div>
+                        <div style="margin-top: 15px;">
+                            <h4>Nova Movimentação</h4>
+                            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                <input type="number" id="new-transaction-value" placeholder="Valor R$" style="flex: 1;">
+                                <input type="text" id="new-transaction-desc" placeholder="Descrição" style="flex: 2;">
+                                <select id="new-transaction-type" style="width: auto;">
+                                    <option value="entrada">➕ Entrada</option>
+                                    <option value="saida">➖ Saída</option>
+                                </select>
+                                <button class="btn-primary" id="add-transaction" style="width: auto;"><i class="fas fa-plus"></i> Lançar</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="panel">
+                        <h3><i class="fas fa-chart-pie"></i> Resumo por Tipo de Pedido</h3>
+                        <div id="pedidos-consumo" class="stat-box" style="margin-bottom: 10px;">
+                            <strong>🍽️ Consumo no Local:</strong> <span id="total-consumo">R$ 0,00</span>
+                        </div>
+                        <div id="pedidos-retirada" class="stat-box" style="margin-bottom: 10px;">
+                            <strong>🏪 Retirada:</strong> <span id="total-retirada">R$ 0,00</span>
+                        </div>
+                        <div id="pedidos-delivery" class="stat-box" style="margin-bottom: 10px;">
+                            <strong>🚚 Delivery:</strong> <span id="total-delivery">R$ 0,00</span>
+                        </div>
+                        <div id="pedidos-online" class="stat-box" style="margin-bottom: 10px;">
+                            <strong>📱 Online:</strong> <span id="total-online">R$ 0,00</span>
+                        </div>
+                        <div id="pedidos-manual" class="stat-box">
+                            <strong>🏪 Balcão:</strong> <span id="total-manual">R$ 0,00</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Histórico -->
+        <div id="tab-vendas" class="tab-content hidden">
+            <div class="panel">
+                <h3><i class="fas fa-receipt"></i> Últimos Pedidos</h3>
+                <div id="sales-list" style="max-height: 500px; overflow-y: auto;"></div>
+            </div>
+        </div>
+
+        <!-- Cardápio -->
+        <div id="tab-cardapio" class="tab-content hidden">
+            <div class="grid-2">
+                <div class="panel">
+                    <h3><i class="fas fa-boxes"></i> Produtos Cadastrados</h3>
+                    <div id="products-list" style="max-height: 500px; overflow-y: auto;"></div>
+                </div>
+                <div class="panel">
+                    <h3><i class="fas fa-plus-circle"></i> Novo Produto</h3>
+                    <input type="text" id="prod-name" placeholder="Nome do produto">
+                    <input type="number" id="prod-price" placeholder="Preço (R$)" step="0.01">
+                    <input type="number" id="prod-stock" placeholder="Quantidade em estoque">
+                    <div style="text-align: center; margin: 15px 0;">
+                        <img id="photo-preview" class="photo-preview" style="display: none;">
+                        <div style="display: flex; gap: 10px;">
+                            <button type="button" class="btn btn-secondary" id="upload-photo-btn" style="flex:1;"><i class="fas fa-upload"></i> Escolher Foto</button>
+                            <button type="button" class="btn btn-secondary" id="camera-btn" style="flex:1;"><i class="fas fa-camera"></i> Tirar Foto</button>
+                        </div>
+                        <input type="file" id="photo-file" accept="image/*" style="display: none;">
+                        <input type="file" id="camera-input" accept="image/*" capture="environment" style="display: none;">
+                    </div>
+                    <button class="btn btn-primary" id="add-product"><i class="fas fa-save"></i> Salvar Produto</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- PAGAMENTOS -->
+        <div id="tab-pagamentos" class="tab-content hidden">
+            <div class="grid-2">
+                <div class="panel">
+                    <h3><i class="fas fa-credit-card"></i> Formas de Pagamento</h3>
+                    <div class="toggle-group">
+                        <span><i class="fas fa-money-bill"></i> Dinheiro</span>
+                        <label class="switch"><input type="checkbox" id="payment-dinheiro" checked><span class="slider"></span></label>
+                    </div>
+                    <div class="toggle-group">
+                        <span><i class="fab fa-pix"></i> Pix</span>
+                        <label class="switch"><input type="checkbox" id="payment-pix" checked><span class="slider"></span></label>
+                    </div>
+                    <div class="toggle-group">
+                        <span><i class="fas fa-credit-card"></i> Cartão de Crédito</span>
+                        <label class="switch"><input type="checkbox" id="payment-credito" checked><span class="slider"></span></label>
+                    </div>
+                    <div class="toggle-group">
+                        <span><i class="fas fa-credit-card"></i> Cartão de Débito</span>
+                        <label class="switch"><input type="checkbox" id="payment-debito" checked><span class="slider"></span></label>
+                    </div>
+                    <button class="btn btn-primary" id="save-payment-settings" style="margin-top: 20px;"><i class="fas fa-save"></i> Salvar Configurações</button>
+                </div>
+                
+                <div class="panel">
+                    <h3><i class="fab fa-pix"></i> Configuração do Pix</h3>
+                    <select id="pix-key-type">
+                        <option value="CPF">CPF</option>
+                        <option value="CNPJ">CNPJ</option>
+                        <option value="Email">E-mail</option>
+                        <option value="Telefone">Telefone</option>
+                        <option value="Aleatorio">Chave Aleatória</option>
+                    </select>
+                    <input type="text" id="pix-key" placeholder="Chave Pix">
+                    <input type="text" id="pix-name" placeholder="Nome do titular">
+                    <div class="qr-code-preview" id="pix-qr-preview" style="display: none;">
+                        <h4>Pré-visualização do QR Code</h4>
+                        <div id="preview-qrcode"></div>
+                    </div>
+                    <button class="btn btn-primary" id="generate-qr-btn" style="margin-top: 10px;"><i class="fas fa-qrcode"></i> Gerar QR Code Pix</button>
+                    <button class="btn btn-primary" id="save-pix-settings" style="margin-top: 10px;"><i class="fas fa-save"></i> Salvar Pix</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MINHA LOJA -->
+        <div id="tab-minhaloja" class="tab-content hidden">
+            <div class="grid-2">
+                <div class="panel">
+                    <h3><i class="fas fa-store"></i> Informações da Loja</h3>
+                    <input type="text" id="shop-name" placeholder="Nome da Loja">
+                    <input type="text" id="shop-whatsapp" placeholder="WhatsApp (ex: 5511999999999)">
+                    <input type="text" id="shop-address" placeholder="Endereço da Loja">
+                    <h3 style="margin-top: 20px;"><i class="fas fa-toggle-on"></i> Status da Loja</h3>
+                    <div class="toggle-group">
+                        <span><i class="fas fa-motorcycle"></i> Delivery</span>
+                        <label class="switch"><input type="checkbox" id="delivery-enabled"><span class="slider"></span></label>
+                    </div>
+                    <div class="toggle-group">
+                        <span><i class="fas fa-store"></i> Retirada no Local</span>
+                        <label class="switch"><input type="checkbox" id="pickup-enabled"><span class="slider"></span></label>
+                    </div>
+                    <div class="toggle-group">
+                        <span><i class="fas fa-clock"></i> Loja Aberta</span>
+                        <label class="switch"><input type="checkbox" id="store-open"><span class="slider"></span></label>
+                    </div>
+                    <button class="btn btn-primary" id="save-store-settings" style="margin-top: 20px;"><i class="fas fa-save"></i> Salvar Configurações</button>
+                </div>
+                
+                <div class="panel">
+                    <h3><i class="fas fa-map-marker-alt"></i> Taxas de Entrega</h3>
+                    <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                        <input type="text" id="zone-name" placeholder="Região" style="flex: 1;">
+                        <input type="text" id="zone-cep" placeholder="CEP" style="flex: 1;">
+                        <input type="number" id="zone-fee" placeholder="Taxa R$" step="0.01" style="width: 100px;">
+                        <button class="btn btn-primary" id="add-zone" style="width: auto; padding: 12px 16px;"><i class="fas fa-plus"></i></button>
+                    </div>
+                    <div id="delivery-zones-list" style="max-height: 200px; overflow-y: auto;"></div>
+                    
+                    <div class="short-link-box">
+                        <i class="fab fa-whatsapp" style="font-size: 2rem; color: #25D366;"></i>
+                        <h3 style="margin: 10px 0;">📱 Link do Cardápio Online</h3>
+                        <div class="short-link" id="short-link-display" style="background:white; padding:10px; border-radius:10px; word-break:break-all; font-size:12px;">Carregando...</div>
+                        <button class="whatsapp-btn" id="send-whatsapp-btn"><i class="fab fa-whatsapp"></i> Enviar via WhatsApp</button>
+                        <button class="btn-secondary" id="copy-short-link" style="margin-top: 10px; width: 100%;"><i class="fas fa-copy"></i> Copiar Link</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CONFIGURAÇÕES -->
+        <div id="tab-configuracoes" class="tab-content hidden">
+            <div class="grid-2">
+                <div class="panel">
+                    <h3><i class="fas fa-lock"></i> Segurança - Usuário e Senha</h3>
+                    <input type="text" id="config-user" placeholder="Novo usuário admin">
+                    <input type="password" id="config-pass" placeholder="Nova senha">
+                    <input type="password" id="config-pass-confirm" placeholder="Confirmar nova senha">
+                    <div id="password-error" style="color:#ef4444; font-size:12px; margin:5px 0;"></div>
+                    
+                    <h3 style="margin-top: 20px;"><i class="fas fa-palette"></i> Personalização de Cores</h3>
+                    <div class="color-input-group" style="display: flex; align-items: center; gap: 10px;">
+                        <label><strong>Cor Principal:</strong></label>
+                        <input type="color" id="color-primary" value="#f97316">
+                    </div>
+                    <div class="color-input-group" style="display: flex; align-items: center; gap: 10px;">
+                        <label><strong>Cor Secundária:</strong></label>
+                        <input type="color" id="color-secondary" value="#dc2626">
+                    </div>
+                    <div class="color-input-group" style="display: flex; align-items: center; gap: 10px;">
+                        <label><strong>Cor da Barra Lateral:</strong></label>
+                        <input type="color" id="color-sidebar" value="#1e293b">
+                    </div>
+                    
+                    <div class="toggle-group">
+                        <span><i class="fas fa-moon"></i> Modo Escuro</span>
+                        <label class="switch"><input type="checkbox" id="dark-mode-toggle"><span class="slider"></span></label>
+                    </div>
+                    
+                    <h3 style="margin-top: 20px;"><i class="fas fa-bell"></i> Notificações</h3>
+                    <div class="toggle-group">
+                        <span><i class="fas fa-volume-up"></i> Notificações de novos pedidos</span>
+                        <label class="switch"><input type="checkbox" id="notifications-enabled"><span class="slider"></span></label>
+                    </div>
+                    <div id="notification-permission" style="font-size:12px; color:#64748b; margin-top:5px;"></div>
+                    
+                    <button class="btn btn-primary" id="save-config-btn" style="margin-top: 20px;"><i class="fas fa-save"></i> Salvar Configurações</button>
+                </div>
+                
+                <div class="panel">
+                    <h3><i class="fas fa-info-circle"></i> Informações do Sistema</h3>
+                    <p><strong>Versão:</strong> 2.2.0</p>
+                    <p><strong>Status:</strong> <span id="info-status">Conectado</span></p>
+                    <p><strong>Banco de Dados:</strong> Firebase Realtime</p>
+                    <p><strong>Sincronização:</strong> Automática em tempo real</p>
+                    <hr style="margin: 20px 0;">
+                    <h3><i class="fas fa-globe"></i> Links Úteis</h3>
+                    <p><strong>Cardápio Online:</strong> <span id="online-menu-url" style="font-size: 11px; word-break: break-all;"></span></p>
+                    <button class="btn-secondary" id="copy-online-url" style="margin-top: 10px;"><i class="fas fa-copy"></i> Copiar Link do Cardápio</button>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+    // Firebase Config
+    const firebaseConfig = {
+        apiKey: "AIzaSyD8ENqoPMSO4XxP06-nsoIDiqcoh-xEDjs",
+        authDomain: "neomenudb.firebaseapp.com",
+        databaseURL: "https://neomenudb-default-rtdb.firebaseio.com",
+        projectId: "neomenudb",
+        storageBucket: "neomenudb.firebasestorage.app",
+        messagingSenderId: "567947601973",
+        appId: "1:567947601973:web:d3df013d722992e7eba97c"
+    };
+    
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+    
+    // LINK CORRETO DO CARDÁPIO ONLINE
+    const ONLINE_MENU_URL = "https://tefhamburgueria-ctrl.github.io/neomenu-app/cardapio-online.html";
+    
+    let db = { products: [], sales: [], settings: {}, deliveryZones: [], appConfig: {}, paymentConfig: {}, orders: [], transactions: [] };
+    let cart = [];
+    let currentPhotoBase64 = null;
+    let manualCart = [];
+    let notificationPermission = false;
+    let currentFilter = 'all';
+    let currentTransactionFilter = 'all';
+    let currentCashierDate = new Date().toISOString().split('T')[0];
+    
+    async function requestNotificationPermission() {
+        if ('Notification' in window) {
+            const permission = await Notification.requestPermission();
+            notificationPermission = permission === 'granted';
+            document.getElementById('notification-permission').innerHTML = notificationPermission ? '✅ Notificações ativadas' : '❌ Permissão negada';
+            return notificationPermission;
+        }
+        return false;
+    }
+    
+    function showNotification(title, body) {
+        if (notificationPermission && document.getElementById('notifications-enabled')?.checked) {
+            new Notification(title, { body: body, icon: 'https://cdn-icons-png.flaticon.com/512/1046/1046784.png' });
+        }
+    }
+    
+    function playNotificationSound() {
+        try {
+            const audio = new Audio('https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3');
+            audio.play().catch(e => console.log('Som não disponível'));
+        } catch(e) {}
+    }
+    
+    document.addEventListener('DOMContentLoaded', () => {
+        if (sessionStorage.getItem('logged') === 'true') initFirebaseAndShowAdmin();
+        document.getElementById('login-btn').addEventListener('click', doLogin);
+        document.getElementById('log-pass').addEventListener('keypress', (e) => { if (e.key === 'Enter') doLogin(); });
+        setupPhotoUpload();
+        document.getElementById('cashier-date').value = currentCashierDate;
+    });
+    
+    function setupPhotoUpload() {
+        const uploadBtn = document.getElementById('upload-photo-btn');
+        const cameraBtn = document.getElementById('camera-btn');
+        const fileInput = document.getElementById('photo-file');
+        const cameraInput = document.getElementById('camera-input');
+        const preview = document.getElementById('photo-preview');
+        
+        if (uploadBtn) uploadBtn.addEventListener('click', () => fileInput.click());
+        if (cameraBtn) cameraBtn.addEventListener('click', () => cameraInput.click());
+        
+        fileInput.addEventListener('change', (e) => handlePhoto(e.target.files[0]));
+        cameraInput.addEventListener('change', (e) => handlePhoto(e.target.files[0]));
+        
+        function handlePhoto(file) {
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    currentPhotoBase64 = event.target.result;
+                    preview.src = currentPhotoBase64;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+    }
+    
+    async function doLogin() {
+        const user = document.getElementById('log-user').value;
+        const pass = document.getElementById('log-pass').value;
+        const configSnap = await database.ref('appConfig').once('value');
+        const appConfig = configSnap.exists() ? configSnap.val() : { adminUser: 'admin', adminPass: '123' };
+        
+        if (user === appConfig.adminUser && pass === appConfig.adminPass) {
+            sessionStorage.setItem('logged', 'true');
+            document.getElementById('login-error').innerHTML = '';
+            initFirebaseAndShowAdmin();
+            requestNotificationPermission();
+        } else {
+            document.getElementById('login-error').innerHTML = '❌ Usuário ou senha incorretos!';
+        }
+    }
+    
+    async function initFirebaseAndShowAdmin() {
+        await loadData();
+        showAdmin();
+        setupRealtimeSync();
+        setupEventListeners();
+        loadConfigToForm();
+        loadPaymentSettings();
+        applyColors(db.appConfig);
+        updateOnlineMenuUrl();
+        updatePendingBadge();
+        updateCashierData();
+    }
+    
+    function updateOnlineMenuUrl() {
+        // Usando o link CORRETO
+        document.getElementById('online-menu-url').innerText = ONLINE_MENU_URL;
+        document.getElementById('short-link-display').innerHTML = `<i class="fas fa-link"></i> ${ONLINE_MENU_URL}`;
+        document.getElementById('short-link-display').setAttribute('data-url', ONLINE_MENU_URL);
+    }
+    
+    function sendToWhatsApp() {
+        const menuUrl = ONLINE_MENU_URL;
+        const shopName = db.settings.shopName || 'NeoMenu';
+        const whatsapp = db.settings.whatsapp || '';
+        const message = `🍽️ *${shopName}* - Cardápio Online%0A%0AFaça seu pedido: ${menuUrl}`;
+        window.open(`https://wa.me/55${whatsapp.replace(/\D/g, '')}?text=${message}`, '_blank');
+    }
+    
+    function copyShortLink() {
+        navigator.clipboard.writeText(ONLINE_MENU_URL);
+        alert('✅ Link copiado!');
+    }
+    
+    function copyOnlineUrl() {
+        navigator.clipboard.writeText(ONLINE_MENU_URL);
+        alert('✅ Link do cardápio copiado!');
+    }
+    
+    async function loadData() {
+        const productsSnap = await database.ref('products').once('value');
+        const salesSnap = await database.ref('sales').once('value');
+        const settingsSnap = await database.ref('settings').once('value');
+        const zonesSnap = await database.ref('deliveryZones').once('value');
+        const configSnap = await database.ref('appConfig').once('value');
+        const paymentSnap = await database.ref('paymentConfig').once('value');
+        const ordersSnap = await database.ref('orders').once('value');
+        const transactionsSnap = await database.ref('transactions').once('value');
+        
+        db.products = productsSnap.exists() ? Object.values(productsSnap.val()) : [];
+        db.sales = salesSnap.exists() ? Object.values(salesSnap.val()) : [];
+        db.settings = settingsSnap.exists() ? settingsSnap.val() : {};
+        db.deliveryZones = zonesSnap.exists() ? Object.values(zonesSnap.val()) : [];
+        db.appConfig = configSnap.exists() ? configSnap.val() : { adminUser: 'admin', adminPass: '123', primaryColor: '#f97316', secondaryColor: '#dc2626', sidebarColor: '#1e293b', darkMode: false, notifications: false };
+        db.paymentConfig = paymentSnap.exists() ? paymentSnap.val() : { dinheiro: true, pix: true, credito: true, debito: true, pixKey: '', pixKeyType: 'CPF', pixName: '', pixQRCode: '' };
+        db.orders = ordersSnap.exists() ? Object.values(ordersSnap.val()) : [];
+        db.transactions = transactionsSnap.exists() ? Object.values(transactionsSnap.val()) : [];
+        
+        if (db.products.length === 0) await addDefaultProducts();
+        if (db.deliveryZones.length === 0) await addDefaultZones();
+    }
+    
+    async function addDefaultProducts() {
+        const defaultProducts = [
+            { id: Date.now() + 1, nome: '🍔 Hambúrguer Artesanal', preco: 32.9, estoque: 20, foto: '' },
+            { id: Date.now() + 2, nome: '🍕 Pizza Margherita', preco: 49.9, estoque: 15, foto: '' },
+            { id: Date.now() + 3, nome: '🥗 Salada Caesar', preco: 28.5, estoque: 12, foto: '' }
+        ];
+        for (const product of defaultProducts) await database.ref('products/' + product.id).set(product);
+        db.products = defaultProducts;
+    }
+    
+    async function addDefaultZones() {
+        const defaultZones = [
+            { id: Date.now() + 1, nome: 'Centro', cep: '01000-000', valor: 6.0 },
+            { id: Date.now() + 2, nome: 'Norte', cep: '02000-000', valor: 12.0 },
+            { id: Date.now() + 3, nome: 'Sul', cep: '03000-000', valor: 8.0 }
+        ];
+        for (const zone of defaultZones) await database.ref('deliveryZones/' + zone.id).set(zone);
+        db.deliveryZones = defaultZones;
+    }
+    
+    function setupRealtimeSync() {
+        database.ref('.info/connected').on('value', (snap) => updateSyncStatus(snap.val() === true));
+        database.ref('products').on('value', (snapshot) => { db.products = snapshot.exists() ? Object.values(snapshot.val()) : []; renderMenu(); renderProductsList(); updateManualProductSelect(); });
+        database.ref('sales').on('value', (snapshot) => { db.sales = snapshot.exists() ? Object.values(snapshot.val()) : []; renderSales(); });
+        database.ref('settings').on('value', (snapshot) => { if (snapshot.exists()) { db.settings = snapshot.val(); loadSettingsToForm(); } });
+        database.ref('deliveryZones').on('value', (snapshot) => { db.deliveryZones = snapshot.exists() ? Object.values(snapshot.val()) : []; renderDeliveryZones(); });
+        database.ref('appConfig').on('value', (snapshot) => { if (snapshot.exists()) { db.appConfig = snapshot.val(); loadConfigToForm(); applyColors(db.appConfig); } });
+        database.ref('paymentConfig').on('value', (snapshot) => { if (snapshot.exists()) { db.paymentConfig = snapshot.val(); loadPaymentSettings(); } });
+        database.ref('transactions').on('value', (snapshot) => { db.transactions = snapshot.exists() ? Object.values(snapshot.val()) : []; updateCashierData(); });
+        
+        database.ref('orders').on('value', (snapshot) => {
+            const newOrders = snapshot.exists() ? Object.values(snapshot.val()) : [];
+            if (db.orders && newOrders.length > db.orders.length) {
+                const newOrder = newOrders.find(o => !db.orders.find(old => old.id === o.id));
+                if (newOrder) {
+                    showNotification('🆕 Novo Pedido!', `${newOrder.cliente} - R$ ${newOrder.total.toFixed(2)}`);
+                    playNotificationSound();
+                }
+            }
+            db.orders = newOrders;
+            renderActiveOrders();
+            updatePendingBadge();
+            updateCashierData();
+        });
+    }
+    
+    function updatePendingBadge() {
+        const pendingCount = db.orders.filter(o => o.status === 'pending' || o.status === 'preparing').length;
+        const badge = document.getElementById('pending-badge');
+        if (pendingCount > 0) {
+            badge.style.display = 'inline-block';
+            badge.textContent = pendingCount;
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+    
+    function updateSyncStatus(isConnected) {
+        const statusDiv = document.getElementById('sync-status');
+        if (isConnected) { statusDiv.innerHTML = '✅ Sincronizado'; statusDiv.className = 'sync-status'; }
+        else { statusDiv.innerHTML = '⚠️ Offline'; statusDiv.className = 'sync-status offline'; }
+    }
+    
+    async function updateCashierData() {
+        const selectedDate = document.getElementById('cashier-date').value || currentCashierDate;
+        
+        const dayOrders = db.orders.filter(order => {
+            const orderDate = new Date(order.timestamp).toISOString().split('T')[0];
+            return orderDate === selectedDate;
+        });
+        
+        const dayTransactions = db.transactions.filter(t => t.date === selectedDate);
+        
+        let totalVendas = dayOrders.reduce((sum, o) => sum + o.total, 0);
+        let totalEntradasManual = dayTransactions.filter(t => t.type === 'entrada').reduce((sum, t) => sum + t.value, 0);
+        let totalSaidasManual = dayTransactions.filter(t => t.type === 'saida').reduce((sum, t) => sum + t.value, 0);
+        
+        let totalEntradas = totalVendas + totalEntradasManual;
+        let totalSaidas = totalSaidasManual;
+        let saldo = totalEntradas - totalSaidas;
+        
+        document.getElementById('total-entradas').innerHTML = `R$ ${totalEntradas.toFixed(2)}`;
+        document.getElementById('total-saidas').innerHTML = `R$ ${totalSaidas.toFixed(2)}`;
+        document.getElementById('saldo-dia').innerHTML = `R$ ${saldo.toFixed(2)}`;
+        document.getElementById('total-pedidos').innerHTML = dayOrders.length;
+        
+        let totalDinheiro = dayOrders.filter(o => o.pagto === 'Dinheiro').reduce((sum, o) => sum + o.total, 0);
+        let totalPix = dayOrders.filter(o => o.pagto === 'Pix').reduce((sum, o) => sum + o.total, 0);
+        let totalCartoes = dayOrders.filter(o => o.pagto === 'Crédito' || o.pagto === 'Débito').reduce((sum, o) => sum + o.total, 0);
+        
+        document.getElementById('total-dinheiro').innerHTML = `R$ ${totalDinheiro.toFixed(2)}`;
+        document.getElementById('total-pix').innerHTML = `R$ ${totalPix.toFixed(2)}`;
+        document.getElementById('total-cartoes').innerHTML = `R$ ${totalCartoes.toFixed(2)}`;
+        
+        let totalConsumo = dayOrders.filter(o => o.tipo === 'Consumo').reduce((sum, o) => sum + o.total, 0);
+        let totalRetirada = dayOrders.filter(o => o.tipo === 'Retirada').reduce((sum, o) => sum + o.total, 0);
+        let totalDelivery = dayOrders.filter(o => o.tipo === 'Delivery').reduce((sum, o) => sum + o.total, 0);
+        let totalOnline = dayOrders.filter(o => o.source === 'online').reduce((sum, o) => sum + o.total, 0);
+        let totalManual = dayOrders.filter(o => o.source === 'manual').reduce((sum, o) => sum + o.total, 0);
+        
+        document.getElementById('total-consumo').innerHTML = `R$ ${totalConsumo.toFixed(2)}`;
+        document.getElementById('total-retirada').innerHTML = `R$ ${totalRetirada.toFixed(2)}`;
+        document.getElementById('total-delivery').innerHTML = `R$ ${totalDelivery.toFixed(2)}`;
+        document.getElementById('total-online').innerHTML = `R$ ${totalOnline.toFixed(2)}`;
+        document.getElementById('total-manual').innerHTML = `R$ ${totalManual.toFixed(2)}`;
+        
+        renderTransactions(dayTransactions);
+    }
+    
+    function renderTransactions(transactions) {
+        const container = document.getElementById('transactions-list');
+        let filtered = transactions;
+        
+        if (currentTransactionFilter === 'entrada') filtered = transactions.filter(t => t.type === 'entrada');
+        else if (currentTransactionFilter === 'saida') filtered = transactions.filter(t => t.type === 'saida');
+        
+        if (filtered.length === 0) {
+            container.innerHTML = '<div style="text-align:center; padding:20px;">Nenhuma movimentação registrada</div>';
+            return;
+        }
+        
+        container.innerHTML = filtered.map(t => `
+            <div class="transaction-item">
+                <div>
+                    <strong>${t.description}</strong><br>
+                    <small>${new Date(t.timestamp).toLocaleString()}</small>
+                </div>
+                <div style="color: ${t.type === 'entrada' ? '#10b981' : '#ef4444'}; font-weight: 700;">
+                    ${t.type === 'entrada' ? '+' : '-'} R$ ${t.value.toFixed(2)}
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    async function addTransaction() {
+        const value = parseFloat(document.getElementById('new-transaction-value').value);
+        const description = document.getElementById('new-transaction-desc').value.trim();
+        const type = document.getElementById('new-transaction-type').value;
+        
+        if (isNaN(value) || !description) {
+            alert('❌ Preencha o valor e a descrição!');
+            return;
+        }
+        
+        const transaction = {
+            id: Date.now().toString(),
+            date: document.getElementById('cashier-date').value || currentCashierDate,
+            timestamp: Date.now(),
+            value: value,
+            description: description,
+            type: type
+        };
+        
+        await database.ref('transactions/' + transaction.id).set(transaction);
+        
+        document.getElementById('new-transaction-value').value = '';
+        document.getElementById('new-transaction-desc').value = '';
+        
+        alert('✅ Movimentação lançada com sucesso!');
+        updateCashierData();
+    }
+    
+    async function printCashierReport() {
+        const selectedDate = document.getElementById('cashier-date').value || currentCashierDate;
+        const shopName = db.settings.shopName || 'NeoMenu';
+        const shopAddress = db.settings.address || '';
+        
+        const dayOrders = db.orders.filter(order => {
+            const orderDate = new Date(order.timestamp).toISOString().split('T')[0];
+            return orderDate === selectedDate;
+        });
+        
+        const dayTransactions = db.transactions.filter(t => t.date === selectedDate);
+        
+        let totalVendas = dayOrders.reduce((sum, o) => sum + o.total, 0);
+        let totalEntradasManual = dayTransactions.filter(t => t.type === 'entrada').reduce((sum, t) => sum + t.value, 0);
+        let totalSaidasManual = dayTransactions.filter(t => t.type === 'saida').reduce((sum, t) => sum + t.value, 0);
+        
+        let totalDinheiro = dayOrders.filter(o => o.pagto === 'Dinheiro').reduce((sum, o) => sum + o.total, 0);
+        let totalPix = dayOrders.filter(o => o.pagto === 'Pix').reduce((sum, o) => sum + o.total, 0);
+        let totalCartoes = dayOrders.filter(o => o.pagto === 'Crédito' || o.pagto === 'Débito').reduce((sum, o) => sum + o.total, 0);
+        
+        let totalConsumo = dayOrders.filter(o => o.tipo === 'Consumo').reduce((sum, o) => sum + o.total, 0);
+        let totalRetirada = dayOrders.filter(o => o.tipo === 'Retirada').reduce((sum, o) => sum + o.total, 0);
+        let totalDelivery = dayOrders.filter(o => o.tipo === 'Delivery').reduce((sum, o) => sum + o.total, 0);
+        
+        const printContent = `
+            <div style="margin-bottom: 20px;">
+                <h4>Resumo Financeiro</h4>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Total de Vendas:</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right;">R$ ${totalVendas.toFixed(2)}</td></tr>
+                    <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Entradas Manuais:</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right;">R$ ${totalEntradasManual.toFixed(2)}</td></tr>
+                    <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Total de Entradas:</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right; color: #10b981;">R$ ${(totalVendas + totalEntradasManual).toFixed(2)}</td></tr>
+                    <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Saídas Manuais:</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right; color: #ef4444;">R$ ${totalSaidasManual.toFixed(2)}</td></tr>
+                    <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong style="font-size: 1.1rem;">SALDO DO DIA:</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right; font-size: 1.2rem; font-weight: 800; color: #f97316;">R$ ${(totalVendas + totalEntradasManual - totalSaidasManual).toFixed(2)}</td></tr>
+                </table>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <h4>Formas de Pagamento</h4>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;">Dinheiro:</td><td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right;">R$ ${totalDinheiro.toFixed(2)}</td></tr>
+                    <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;">Pix:</td><td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right;">R$ ${totalPix.toFixed(2)}</td></tr>
+                    <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;">Cartões:</td><td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right;">R$ ${totalCartoes.toFixed(2)}</td></tr>
+                </table>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <h4>Tipos de Pedido</h4>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;">🍽️ Consumo no Local:</td><td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right;">R$ ${totalConsumo.toFixed(2)}</td></tr>
+                    <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;">🏪 Retirada:</td><td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right;">R$ ${totalRetirada.toFixed(2)}</td></tr>
+                    <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;">🚚 Delivery:</td><td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right;">R$ ${totalDelivery.toFixed(2)}</td></tr>
+                </table>
+            </div>
+            
+            <div>
+                <h4>Pedidos Realizados (${dayOrders.length})</h4>
+                <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                    <thead><tr><th style="padding: 8px; border-bottom: 1px solid #ddd; text-align: left;">Cliente</th><th style="padding: 8px; border-bottom: 1px solid #ddd; text-align: left;">Tipo</th><th style="padding: 8px; border-bottom: 1px solid #ddd; text-align: left;">Pagamento</th><th style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right;">Total</th></tr></thead>
+                    <tbody>
+                        ${dayOrders.map(o => `<tr><td style="padding: 8px; border-bottom: 1px solid #ddd;">${o.cliente}</td><td style="padding: 8px; border-bottom: 1px solid #ddd;">${o.tipo}</td><td style="padding: 8px; border-bottom: 1px solid #ddd;">${o.pagto}</td><td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right;">R$ ${o.total.toFixed(2)}</td></tr>`).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+        
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`
+            <html><head><title>Relatório de Caixa - ${new Date(selectedDate).toLocaleDateString('pt-BR')}</title>
+            <style>body { font-family: Arial, sans-serif; padding: 20px; } table { width: 100%; border-collapse: collapse; } th, td { padding: 8px; border-bottom: 1px solid #ddd; }</style>
+            </head><body>
+            <div style="text-align:center;"><h2>${shopName}</h2><p>${shopAddress}</p><h3>Relatório de Fechamento de Caixa</h3><p>Data: ${new Date(selectedDate).toLocaleDateString('pt-BR')} - Gerado em: ${new Date().toLocaleString('pt-BR')}</p></div>
+            ${printContent}
+            <div style="text-align:center; margin-top:30px;"><p>Documento gerado eletronicamente - Sistema NeoMenu</p><p>Obrigado pela preferência!</p></div>
+            </body></html>
+        `);
+        printWindow.document.close();
+        printWindow.print();
+    }
+    
+    function printOrder(orderId) {
+        const order = db.orders.find(o => o.id === orderId);
+        if (!order) return;
+        
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`
+            <html><head><title>Pedido #${order.id.slice(-6)}</title>
+            <style>body { font-family: Arial, sans-serif; padding: 20px; } table { width: 100%; border-collapse: collapse; } th, td { padding: 10px; border-bottom: 1px solid #ddd; } .total { font-size: 1.2rem; font-weight: bold; text-align: right; margin-top: 20px; }</style>
+            </head><body>
+            <div style="text-align:center;"><h2>${db.settings.shopName || 'NeoMenu'}</h2><p>${db.settings.address || ''}</p><h3>Comprovante de Pedido</h3></div>
+            <div><p><strong>Pedido #:</strong> ${order.id.slice(-6)}</p><p><strong>Cliente:</strong> ${order.cliente}</p><p><strong>Data:</strong> ${new Date(order.timestamp).toLocaleString('pt-BR')}</p><p><strong>Tipo:</strong> ${order.tipo === 'Delivery' ? '🚚 Delivery' : (order.tipo === 'Retirada' ? '🏪 Retirada' : '🍽️ Consumo no Local')}</p><p><strong>Pagamento:</strong> ${order.pagto}</p>${order.endereco ? `<p><strong>Endereço:</strong> ${order.endereco}</p>` : ''}</div>
+            <table><thead><tr><th>Item</th><th>Qtd</th><th>Preço</th><th>Subtotal</th></tr></thead><tbody>
+            ${order.itens.map(i => `<tr><td>${i.nome}</td><td>${i.quantidade}</td><td>R$ ${i.preco.toFixed(2)}</td><td>R$ ${(i.preco * i.quantidade).toFixed(2)}</td></tr>`).join('')}
+            </tbody></table>
+            <div class="total"><p>Total: R$ ${order.total.toFixed(2)}</p></div>
+            <div style="text-align:center; margin-top:30px;"><p>Obrigado pela preferência!</p>${db.settings.whatsapp ? `<p>WhatsApp: ${db.settings.whatsapp}</p>` : ''}</div>
+            </body></html>
+        `);
+        printWindow.document.close();
+        printWindow.print();
+    }
+    
+    function loadSettingsToForm() {
+        document.getElementById('shop-name').value = db.settings.shopName || '';
+        document.getElementById('shop-whatsapp').value = db.settings.whatsapp || '';
+        document.getElementById('shop-address').value = db.settings.address || '';
+        document.getElementById('delivery-enabled').checked = db.settings.deliveryEnabled !== false;
+        document.getElementById('pickup-enabled').checked = db.settings.pickupEnabled !== false;
+        document.getElementById('store-open').checked = db.settings.storeOpen !== false;
+    }
+    
+    function loadPaymentSettings() {
+        document.getElementById('payment-dinheiro').checked = db.paymentConfig.dinheiro !== false;
+        document.getElementById('payment-pix').checked = db.paymentConfig.pix !== false;
+        document.getElementById('payment-credito').checked = db.paymentConfig.credito !== false;
+        document.getElementById('payment-debito').checked = db.paymentConfig.debito !== false;
+        document.getElementById('pix-key-type').value = db.paymentConfig.pixKeyType || 'CPF';
+        document.getElementById('pix-key').value = db.paymentConfig.pixKey || '';
+        document.getElementById('pix-name').value = db.paymentConfig.pixName || '';
+    }
+    
+    function loadConfigToForm() {
+        document.getElementById('config-user').value = db.appConfig.adminUser || 'admin';
+        document.getElementById('color-primary').value = db.appConfig.primaryColor || '#f97316';
+        document.getElementById('color-secondary').value = db.appConfig.secondaryColor || '#dc2626';
+        document.getElementById('color-sidebar').value = db.appConfig.sidebarColor || '#1e293b';
+        document.getElementById('dark-mode-toggle').checked = db.appConfig.darkMode || false;
+        document.getElementById('notifications-enabled').checked = db.appConfig.notifications || false;
+        if (db.appConfig.darkMode) document.body.classList.add('dark-mode');
+        else document.body.classList.remove('dark-mode');
+    }
+    
+    function applyColors(colors) {
+        if (colors.primaryColor) document.documentElement.style.setProperty('--primary-color', colors.primaryColor);
+        if (colors.secondaryColor) document.documentElement.style.setProperty('--primary-dark', colors.secondaryColor);
+        if (colors.sidebarColor) document.documentElement.style.setProperty('--sidebar-bg', colors.sidebarColor);
+    }
+    
+    function renderDeliveryZones() {
+        const container = document.getElementById('delivery-zones-list');
+        if (!container) return;
+        if (db.deliveryZones.length === 0) { container.innerHTML = '<div style="text-align:center; padding:20px;">Nenhuma região cadastrada</div>'; return; }
+        container.innerHTML = db.deliveryZones.map(zone => `<div class="zone-item"><div><strong>${zone.nome}</strong><br><small>${zone.cep || 'Sem CEP'} - R$ ${zone.valor.toFixed(2)}</small></div><button class="btn-danger" onclick="deleteZone(${zone.id})">Excluir</button></div>`).join('');
+    }
+    
+    window.deleteZone = async (id) => { if (confirm('Remover região?')) await database.ref('deliveryZones/' + id).remove(); };
+    
+    function renderActiveOrders() {
+        const container = document.getElementById('active-orders-list');
+        if (!container) return;
+        
+        let filteredOrders = db.orders.filter(o => o.status !== 'delivered' && o.status !== 'completed');
+        
+        if (currentFilter === 'online') filteredOrders = filteredOrders.filter(o => o.source === 'online');
+        else if (currentFilter === 'manual') filteredOrders = filteredOrders.filter(o => o.source === 'manual');
+        
+        if (filteredOrders.length === 0) {
+            container.innerHTML = '<div style="text-align:center; padding:40px; color:#94a3b8;">Nenhum pedido ativo</div>';
+            return;
+        }
+        
+        container.innerHTML = filteredOrders.sort((a,b) => a.timestamp - b.timestamp).map(order => `
+            <div class="order-card ${order.status}">
+                <div class="order-header">
+                    <div>
+                        <strong>${order.cliente}</strong>
+                        <span class="${order.source === 'online' ? 'badge-online' : 'badge-balcao'}">${order.source === 'online' ? '📱 Online' : '🏪 Balcão'}</span>
+                    </div>
+                    <div><span class="order-status status-${order.status}">${order.status === 'pending' ? '⏳ Pendente' : order.status === 'preparing' ? '🍳 Em preparo' : '✅ Pronto'}</span></div>
+                </div>
+                <div><small>${new Date(order.timestamp).toLocaleString()}</small></div>
+                <div class="order-items">${order.itens.map(i => `<div>${i.quantidade}x ${i.nome} - R$ ${(i.preco * i.quantidade).toFixed(2)}</div>`).join('')}</div>
+                <div><strong>Total: R$ ${order.total.toFixed(2)}</strong> - ${order.pagto}</div>
+                <div><small>Tipo: ${order.tipo === 'Delivery' ? '🚚 Delivery' : (order.tipo === 'Retirada' ? '🏪 Retirada' : '🍽️ Consumo no Local')}</small></div>
+                ${order.endereco ? `<div><small>📍 ${order.endereco}</small></div>` : ''}
+                ${order.telefone ? `<div><small>📞 ${order.telefone}</small></div>` : ''}
+                <div class="order-actions">
+                    ${order.status === 'pending' ? `<button class="btn-preparing" onclick="updateOrderStatus('${order.id}', 'preparing')"><i class="fas fa-utensils"></i> Iniciar Preparo</button>` : ''}
+                    ${order.status === 'preparing' ? `<button class="btn-ready" onclick="updateOrderStatus('${order.id}', 'ready')"><i class="fas fa-check-circle"></i> Marcar como Pronto</button>` : ''}
+                    <button class="btn-whatsapp" onclick="printOrder('${order.id}')"><i class="fas fa-print"></i> Imprimir</button>
+                    ${order.telefone ? `<button class="btn-whatsapp" onclick="sendWhatsAppMessage('${order.id}')"><i class="fab fa-whatsapp"></i> Notificar</button>` : ''}
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    window.updateOrderStatus = async (orderId, newStatus) => {
+        const order = db.orders.find(o => o.id === orderId);
+        if (!order) return;
+        
+        await database.ref('orders/' + orderId).update({ status: newStatus });
+        
+        let statusText = newStatus === 'preparing' ? 'em preparo' : 'pronto';
+        
+        if (order.telefone) {
+            const message = `🍽️ *${db.settings.shopName || 'NeoMenu'}* - Seu pedido está ${statusText}!%0A%0A*Pedido #${order.id.slice(-6)}*%0A*Cliente:* ${order.cliente}%0A*Total:* R$ ${order.total.toFixed(2)}%0A%0AObrigado! 🚀`;
+            window.open(`https://wa.me/55${order.telefone.replace(/\D/g, '')}?text=${message}`, '_blank');
+        }
+        
+        alert(`✅ Pedido atualizado para ${statusText}!`);
+        updatePendingBadge();
+    };
+    
+    window.sendWhatsAppMessage = async (orderId) => {
+        const order = db.orders.find(o => o.id === orderId);
+        if (!order || !order.telefone) return;
+        
+        let message = order.status === 'ready' ? `🍽️ *${db.settings.shopName || 'NeoMenu'}* - Seu pedido está pronto!%0A%0A*Pedido #${order.id.slice(-6)}*%0A*Cliente:* ${order.cliente}%0A*Total:* R$ ${order.total.toFixed(2)}%0A%0A${order.tipo === 'Delivery' ? '🚚 Seu pedido saiu para entrega!' : '🍽️ Aguardamos você!'}%0A%0AObrigado! 🚀` : `🍽️ *${db.settings.shopName || 'NeoMenu'}* - Seu pedido foi confirmado!%0A%0A*Pedido #${order.id.slice(-6)}*%0A*Cliente:* ${order.cliente}%0A*Total:* R$ ${order.total.toFixed(2)}%0A%0AAcompanhe o status! 🚀`;
+        
+        window.open(`https://wa.me/55${order.telefone.replace(/\D/g, '')}?text=${message}`, '_blank');
+    };
+    
+    function updateManualProductSelect() {
+        const select = document.getElementById('manual-product');
+        if (select) {
+            select.innerHTML = '<option value="">Selecione um produto</option>' + db.products.map(p => `<option value="${p.id}" data-preco="${p.preco}" data-nome="${p.nome}">${p.nome} - R$ ${p.preco.toFixed(2)}</option>`).join('');
+        }
+    }
+    
+    function updateManualTotal() {
+        const total = manualCart.reduce((s, i) => s + (i.preco * i.qty), 0);
+        document.getElementById('manual-total').innerText = `R$ ${total.toFixed(2)}`;
+        renderManualItemsList();
+    }
+    
+    function renderManualItemsList() {
+        const container = document.getElementById('manual-items-list');
+        if (manualCart.length === 0) {
+            container.innerHTML = '<div style="text-align:center; padding:20px; color:#94a3b8;">Nenhum item adicionado</div>';
+            return;
+        }
+        container.innerHTML = manualCart.map((item, idx) => `
+            <div style="display:flex; justify-content:space-between; padding:8px; border-bottom:1px solid var(--border-color);">
+                <span>${item.nome} x${item.qty}</span>
+                <span>R$ ${(item.preco * item.qty).toFixed(2)}</span>
+                <button class="btn-danger" onclick="removeManualItem(${idx})" style="padding:2px 8px;">✕</button>
+            </div>
+        `).join('');
+    }
+    
+    window.removeManualItem = (idx) => {
+        manualCart.splice(idx, 1);
+        updateManualTotal();
+    };
+    
+    function showAdmin() {
+        document.getElementById('page-login').classList.add('hidden');
+        document.getElementById('view-admin').classList.remove('hidden');
+        renderMenu(); renderProductsList(); renderSales(); renderCart(); renderActiveOrders();
+        loadSettingsToForm(); renderDeliveryZones(); loadConfigToForm(); loadPaymentSettings();
+        updateManualProductSelect();
+        updateManualTotal();
+    }
+    
+    function setupEventListeners() {
+        document.querySelectorAll('.nav-link[data-tab]').forEach(link => link.addEventListener('click', () => switchTab(link.dataset.tab, link)));
+        document.getElementById('logout-btn').addEventListener('click', logout);
+        document.getElementById('finalize-sale').addEventListener('click', finalizeSale);
+        document.getElementById('add-product').addEventListener('click', addProduct);
+        document.getElementById('save-store-settings').addEventListener('click', saveStoreSettings);
+        document.getElementById('add-zone').addEventListener('click', addDeliveryZone);
+        document.getElementById('save-config-btn').addEventListener('click', saveConfig);
+        document.getElementById('save-payment-settings').addEventListener('click', savePaymentSettings);
+        document.getElementById('save-pix-settings').addEventListener('click', savePixSettings);
+        document.getElementById('generate-qr-btn').addEventListener('click', generatePixQRCode);
+        document.getElementById('send-whatsapp-btn').addEventListener('click', sendToWhatsApp);
+        document.getElementById('copy-short-link').addEventListener('click', copyShortLink);
+        document.getElementById('copy-online-url').addEventListener('click', copyOnlineUrl);
+        document.getElementById('search-pdv').addEventListener('input', () => renderMenu());
+        document.getElementById('dark-mode-toggle').addEventListener('change', (e) => { if(e.target.checked) document.body.classList.add('dark-mode'); else document.body.classList.remove('dark-mode'); });
+        document.getElementById('color-primary').addEventListener('input', (e) => document.documentElement.style.setProperty('--primary-color', e.target.value));
+        document.getElementById('color-secondary').addEventListener('input', (e) => document.documentElement.style.setProperty('--primary-dark', e.target.value));
+        document.getElementById('color-sidebar').addEventListener('input', (e) => document.documentElement.style.setProperty('--sidebar-bg', e.target.value));
+        
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentFilter = btn.dataset.filter;
+                renderActiveOrders();
+            });
+        });
+        
+        document.getElementById('show-all-transactions').addEventListener('click', () => { currentTransactionFilter = 'all'; updateCashierData(); });
+        document.getElementById('show-entradas').addEventListener('click', () => { currentTransactionFilter = 'entrada'; updateCashierData(); });
+        document.getElementById('show-saidas').addEventListener('click', () => { currentTransactionFilter = 'saida'; updateCashierData(); });
+        
+        document.getElementById('filter-date').addEventListener('click', () => { currentCashierDate = document.getElementById('cashier-date').value; updateCashierData(); });
+        document.getElementById('add-transaction').addEventListener('click', addTransaction);
+        document.getElementById('print-cashier-report').addEventListener('click', printCashierReport);
+        
+        document.getElementById('manual-type').addEventListener('change', (e) => {
+            document.getElementById('manual-address-field').style.display = e.target.value === 'Delivery' ? 'block' : 'none';
+        });
+        
+        document.getElementById('add-manual-item')?.addEventListener('click', () => {
+            const select = document.getElementById('manual-product');
+            const option = select.options[select.selectedIndex];
+            const id = select.value;
+            const nome = option.dataset.nome;
+            const preco = parseFloat(option.dataset.preco);
+            const qty = parseInt(document.getElementById('manual-qty').value) || 1;
+            
+            if (!id || !nome) return alert('Selecione um produto!');
+            
+            const existing = manualCart.find(i => i.id === id);
+            if (existing) existing.qty += qty;
+            else manualCart.push({ id, nome, preco, qty });
+            
+            updateManualTotal();
+            document.getElementById('manual-qty').value = 1;
+        });
+        
+        document.getElementById('create-manual-order')?.addEventListener('click', async () => {
+            const cliente = document.getElementById('manual-customer').value.trim();
+            if (!cliente || manualCart.length === 0) return alert('Preencha o nome do cliente e adicione itens!');
+            
+            const total = manualCart.reduce((s, i) => s + (i.preco * i.qty), 0);
+            const order = {
+                id: Date.now().toString(),
+                timestamp: Date.now(),
+                cliente: cliente,
+                telefone: document.getElementById('manual-phone').value,
+                tipo: document.getElementById('manual-type').value,
+                pagto: document.getElementById('manual-payment').value,
+                endereco: document.getElementById('manual-address')?.value || '',
+                total: total,
+                status: 'pending',
+                source: 'manual',
+                itens: manualCart.map(i => ({ nome: i.nome, quantidade: i.qty, preco: i.preco }))
+            };
+            
+            await database.ref('orders/' + order.id).set(order);
+            
+            for (let item of manualCart) {
+                const product = db.products.find(p => p.id == item.id);
+                if (product) {
+                    product.estoque -= item.qty;
+                    await database.ref('products/' + product.id).update({ estoque: product.estoque });
+                }
+            }
+            
+            manualCart = [];
+            document.getElementById('manual-customer').value = '';
+            document.getElementById('manual-phone').value = '';
+            document.getElementById('manual-address').value = '';
+            updateManualTotal();
+            alert('✅ Pedido criado com sucesso!');
+            updateCashierData();
+        });
+    }
+    
+    function switchTab(tab, element) {
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+        document.getElementById('tab-' + tab).classList.remove('hidden');
+        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+        if (element) element.classList.add('active');
+        if (tab === 'minhaloja') { renderDeliveryZones(); updateOnlineMenuUrl(); }
+        if (tab === 'pedidos') { renderActiveOrders(); updatePendingBadge(); }
+        if (tab === 'caixa') { updateCashierData(); }
+        if (tab === 'cardapio') { updateManualProductSelect(); }
+    }
+    
+    async function saveConfig() {
+        const newUser = document.getElementById('config-user').value.trim();
+        const newPass = document.getElementById('config-pass').value;
+        const confirmPass = document.getElementById('config-pass-confirm').value;
+        
+        if (newPass !== confirmPass) {
+            document.getElementById('password-error').innerHTML = '❌ As senhas não coincidem!';
+            return;
+        }
+        document.getElementById('password-error').innerHTML = '';
+        
+        const newConfig = {
+            adminUser: newUser || 'admin',
+            adminPass: newPass || '123',
+            primaryColor: document.getElementById('color-primary').value,
+            secondaryColor: document.getElementById('color-secondary').value,
+            sidebarColor: document.getElementById('color-sidebar').value,
+            darkMode: document.getElementById('dark-mode-toggle').checked,
+            notifications: document.getElementById('notifications-enabled').checked
+        };
+        
+        await database.ref('appConfig').set(newConfig);
+        alert('✅ Configurações salvas!');
+    }
+    
+    async function savePaymentSettings() {
+        const paymentConfig = {
+            dinheiro: document.getElementById('payment-dinheiro').checked,
+            pix: document.getElementById('payment-pix').checked,
+            credito: document.getElementById('payment-credito').checked,
+            debito: document.getElementById('payment-debito').checked,
+            pixKeyType: db.paymentConfig?.pixKeyType || 'CPF',
+            pixKey: db.paymentConfig?.pixKey || '',
+            pixName: db.paymentConfig?.pixName || ''
+        };
+        await database.ref('paymentConfig').set(paymentConfig);
+        db.paymentConfig = paymentConfig;
+        alert('✅ Formas de pagamento salvas!');
+    }
+    
+    async function savePixSettings() {
+        const pixConfig = {
+            ...db.paymentConfig,
+            pixKeyType: document.getElementById('pix-key-type').value,
+            pixKey: document.getElementById('pix-key').value,
+            pixName: document.getElementById('pix-name').value
+        };
+        await database.ref('paymentConfig').set(pixConfig);
+        db.paymentConfig = pixConfig;
+        alert('✅ Configurações do Pix salvas!');
+    }
+    
+    function generatePixQRCode() {
+        const pixKey = document.getElementById('pix-key').value;
+        const pixName = document.getElementById('pix-name').value;
+        
+        if (!pixKey) {
+            alert('❌ Digite a chave Pix primeiro!');
+            return;
+        }
+        
+        const pixCode = `00020126580014BR.GOV.BCB.PIX0136${pixKey}52040000530398654050.005802BR5913${pixName || 'Loja'}6008BRASIL62070503***6304`;
+        
+        const previewDiv = document.getElementById('preview-qrcode');
+        previewDiv.innerHTML = '';
+        
+        new QRCode(previewDiv, {
+            text: pixCode,
+            width: 200,
+            height: 200,
+            colorDark: "#000000",
+            colorLight: "#ffffff",
+            correctLevel: QRCode.CorrectLevel.H
+        });
+        
+        document.getElementById('pix-qr-preview').style.display = 'block';
+        alert('✅ QR Code gerado!');
+    }
+    
+    async function saveStoreSettings() {
+        const settings = {
+            shopName: document.getElementById('shop-name').value,
+            whatsapp: document.getElementById('shop-whatsapp').value,
+            address: document.getElementById('shop-address').value,
+            deliveryEnabled: document.getElementById('delivery-enabled').checked,
+            pickupEnabled: document.getElementById('pickup-enabled').checked,
+            storeOpen: document.getElementById('store-open').checked
+        };
+        await database.ref('settings').set(settings);
+        alert('✅ Configurações da loja salvas!');
+    }
+    
+    async function addDeliveryZone() {
+        const nome = document.getElementById('zone-name').value.trim();
+        const cep = document.getElementById('zone-cep').value.trim();
+        const valor = parseFloat(document.getElementById('zone-fee').value);
+        if (!nome || isNaN(valor)) return alert('Preencha todos os campos!');
+        await database.ref('deliveryZones/' + Date.now()).set({ id: Date.now(), nome, cep, valor });
+        document.getElementById('zone-name').value = ''; document.getElementById('zone-cep').value = ''; document.getElementById('zone-fee').value = '';
+        alert('✅ Região adicionada!');
+    }
+    
+    function renderMenu() {
+        const search = document.getElementById('search-pdv')?.value.toLowerCase() || '';
+        const filtered = db.products.filter(p => p.nome.toLowerCase().includes(search));
+        document.getElementById('pdv-menu').innerHTML = filtered.map(p => `<div class="item-card" onclick="addToCart(${p.id})"><span class="badge-estoque">${p.estoque}</span>${p.foto ? `<img src="${p.foto}">` : '<i class="fas fa-utensils" style="font-size:40px; margin:15px;"></i>'}<p><strong>${p.nome}</strong></p><b style="color:var(--primary-color);">R$ ${p.preco.toFixed(2)}</b></div>`).join('');
+    }
+    
+    window.addToCart = function(id) {
+        const product = db.products.find(p => p.id === id);
+        if (product && product.estoque > 0) {
+            const existing = cart.find(i => i.id === id);
+            if (existing) existing.qty++;
+            else cart.push({ ...product, qty: 1 });
+            renderCart();
+        } else alert('❌ Produto sem estoque!');
+    };
+    
+    function renderCart() {
+        let total = 0;
+        if (cart.length === 0) { document.getElementById('cart-list').innerHTML = '<div style="text-align:center; padding:20px;"><i class="fas fa-shopping-cart" style="font-size:3rem;"></i><p>Carrinho vazio</p></div>'; document.getElementById('cart-total').innerText = 'R$ 0,00'; return; }
+        document.getElementById('cart-list').innerHTML = cart.map((item, idx) => { total += item.preco * item.qty; return `<div class="cart-item"><div><strong>${item.nome}</strong><br><small>R$ ${item.preco.toFixed(2)}</small></div><div><button class="btn-danger" onclick="updateQty(${idx}, -1)">-</button> ${item.qty} <button class="btn-danger" onclick="updateQty(${idx}, 1)">+</button> <button class="btn-danger" onclick="removeFromCart(${idx})">✕</button></div></div>`; }).join('');
+        document.getElementById('cart-total').innerText = `R$ ${total.toFixed(2)}`;
+    }
+    
+    window.updateQty = function(idx, change) {
+        const item = cart[idx];
+        const newQty = item.qty + change;
+        if (newQty <= 0) cart.splice(idx, 1);
+        else if (newQty <= item.estoque) item.qty = newQty;
+        else alert('Quantidade máxima!');
+        renderCart();
+    };
+    
+    window.removeFromCart = function(idx) { cart.splice(idx, 1); renderCart(); };
+    
+    async function finalizeSale() {
+        const customer = document.getElementById('customer-name').value.trim();
+        if (!customer || cart.length === 0) return alert('Preencha o nome do cliente!');
+        const total = cart.reduce((s, i) => s + (i.preco * i.qty), 0);
+        
+        const order = {
+            id: Date.now().toString(),
+            timestamp: Date.now(),
+            cliente: customer,
+            telefone: '',
+            tipo: 'Consumo',
+            pagto: document.getElementById('payment-method').value,
+            total: total,
+            status: 'pending',
+            source: 'manual',
+            itens: cart.map(i => ({ nome: i.nome, quantidade: i.qty, preco: i.preco }))
+        };
+        
+        await database.ref('orders/' + order.id).set(order);
+        
+        for (let item of cart) {
+            const product = db.products.find(p => p.id === item.id);
+            if (product) { product.estoque -= item.qty; await database.ref('products/' + product.id).update({ estoque: product.estoque }); }
+        }
+        
+        cart = []; document.getElementById('customer-name').value = ''; renderCart();
+        alert('✅ Pedido criado!');
+        switchTab('pedidos', document.querySelector('.nav-link[data-tab="pedidos"]'));
+        updateCashierData();
+    }
+    
+    function renderProductsList() {
+        document.getElementById('products-list').innerHTML = db.products.map(p => `<div style="display:flex; justify-content:space-between; align-items:center; padding:12px; border-bottom:1px solid var(--border-color);"><div><strong>${p.nome}</strong><br><small>📦 ${p.estoque}</small></div><div>R$ ${p.preco.toFixed(2)}<button class="btn-danger" onclick="deleteProduct(${p.id})" style="margin-left:10px;">Excluir</button></div></div>`).join('');
+    }
+    
+    async function addProduct() {
+        const nome = document.getElementById('prod-name').value.trim();
+        const preco = parseFloat(document.getElementById('prod-price').value);
+        const estoque = parseInt(document.getElementById('prod-stock').value) || 0;
+        if (!nome || isNaN(preco)) return alert('Preencha todos os campos!');
+        const newProduct = { id: Date.now(), nome, preco, estoque, foto: currentPhotoBase64 || '' };
+        await database.ref('products/' + newProduct.id).set(newProduct);
+        document.getElementById('prod-name').value = ''; document.getElementById('prod-price').value = ''; document.getElementById('prod-stock').value = '';
+        document.getElementById('photo-preview').style.display = 'none'; currentPhotoBase64 = null;
+        alert('✅ Produto adicionado!');
+    }
+    
+    window.deleteProduct = async (id) => { if (confirm('Excluir produto?')) await database.ref('products/' + id).remove(); };
+    
+    function renderSales() {
+        document.getElementById('sales-list').innerHTML = db.sales.slice().reverse().map(s => `<div style="background:#f8fafc; border-radius:16px; padding:16px; margin-bottom:12px; border-left:4px solid var(--primary-color);"><strong>${s.cliente}</strong><br><small>${s.data}</small><br>Total: <strong>R$ ${s.total.toFixed(2)}</strong> - ${s.pagto}</div>`).join('');
+    }
+    
+    function logout() { sessionStorage.removeItem('logged'); location.reload(); }
+</script>
+</body>
+</html>

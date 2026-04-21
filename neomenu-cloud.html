@@ -19,6 +19,9 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
     
+    <!-- Biblioteca para gerar QR Code -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -75,6 +78,7 @@
         
         .grid-2 { display: grid; grid-template-columns: 1fr 380px; gap: 28px; }
         .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
         
         .pdv-items {
             display: grid;
@@ -138,6 +142,7 @@
         
         .btn-primary { background: linear-gradient(135deg, var(--primary-color), var(--primary-dark)); color: white; width: 100%; }
         .btn-secondary { background: #64748b; color: white; }
+        .btn-success { background: #10b981; color: white; }
         .btn-danger { background: #ef4444; color: white; padding: 4px 12px; border-radius: 40px; cursor: pointer; border: none; }
         .btn-warning { background: #f59e0b; color: white; }
         
@@ -216,6 +221,7 @@
             cursor: pointer;
         }
         
+        /* Estilos da aba Pedidos */
         .order-card {
             background: var(--card-bg);
             border-radius: 20px;
@@ -276,6 +282,7 @@
         .btn-preparing { background: #3b82f6; color: white; }
         .btn-ready { background: #10b981; color: white; }
         .btn-cancel-order { background: #ef4444; color: white; }
+        .btn-whatsapp { background: #25D366; color: white; }
         
         .badge-online { background: #10b981; color: white; padding: 2px 8px; border-radius: 20px; font-size: 10px; }
         .badge-balcao { background: #f59e0b; color: white; padding: 2px 8px; border-radius: 20px; font-size: 10px; }
@@ -302,6 +309,40 @@
             border-color: var(--primary-color);
         }
         
+        /* Estilos do Fechamento de Caixa */
+        .cashier-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-box {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 15px;
+            text-align: center;
+            border: 1px solid var(--border-color);
+        }
+        
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: var(--primary-color);
+        }
+        
+        .transaction-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .transaction-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
         .short-link-box {
             background: linear-gradient(135deg, #fef3c7, #fde68a);
             border-radius: 16px;
@@ -322,9 +363,26 @@
             margin-top: 10px;
         }
         
+        .photo-preview {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin: 10px auto;
+            display: block;
+            border: 2px solid var(--primary-color);
+        }
+        
         @media (max-width: 768px) {
-            .grid-2 { grid-template-columns: 1fr; }
+            .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
             main { margin-left: 0; padding: 20px; }
+        }
+        
+        @media print {
+            body * { visibility: hidden; }
+            #print-area, #print-area * { visibility: visible; }
+            #print-area { position: absolute; top: 0; left: 0; width: 100%; padding: 20px; }
+            .no-print { display: none !important; }
         }
     </style>
 </head>
@@ -355,6 +413,7 @@
         <nav style="margin-top: 20px;">
             <div class="nav-link active" data-tab="pdv"><i class="fas fa-cash-register"></i> PDV / Vendas</div>
             <div class="nav-link" data-tab="pedidos"><i class="fas fa-clipboard-list"></i> Pedidos <span id="pending-badge" style="display:none; background:#ef4444; color:white; border-radius:50%; padding:2px 8px; margin-left:5px; font-size:10px;">0</span></div>
+            <div class="nav-link" data-tab="caixa"><i class="fas fa-coins"></i> Fechamento de Caixa</div>
             <div class="nav-link" data-tab="cardapio"><i class="fas fa-utensils"></i> Cardápio</div>
             <div class="nav-link" data-tab="minhaloja"><i class="fas fa-store"></i> Minha Loja</div>
             <div class="nav-link" data-tab="configuracoes"><i class="fas fa-cog"></i> Configurações</div>
@@ -404,603 +463,59 @@
             </div>
         </div>
 
-        <!-- CARDÁPIO -->
-        <div id="tab-cardapio" class="tab-content hidden">
-            <div class="grid-2">
-                <div class="panel">
-                    <h3><i class="fas fa-boxes"></i> Produtos Cadastrados</h3>
-                    <div id="products-list" style="max-height: 500px; overflow-y: auto;"></div>
-                </div>
-                <div class="panel">
-                    <h3><i class="fas fa-plus-circle"></i> Novo Produto</h3>
-                    <input type="text" id="prod-name" placeholder="Nome do produto">
-                    <input type="number" id="prod-price" placeholder="Preço (R$)" step="0.01">
-                    <input type="number" id="prod-stock" placeholder="Quantidade em estoque">
-                    <div style="text-align: center; margin: 15px 0;">
-                        <img id="photo-preview" class="photo-preview" style="display: none; width:100px; height:100px; border-radius:50%; object-fit:cover;">
-                        <div style="display: flex; gap: 10px;">
-                            <button type="button" class="btn btn-secondary" id="upload-photo-btn" style="flex:1;"><i class="fas fa-upload"></i> Escolher Foto</button>
-                            <button type="button" class="btn btn-secondary" id="camera-btn" style="flex:1;"><i class="fas fa-camera"></i> Tirar Foto</button>
-                        </div>
-                        <input type="file" id="photo-file" accept="image/*" style="display: none;">
-                        <input type="file" id="camera-input" accept="image/*" capture="environment" style="display: none;">
+        <!-- FECHAMENTO DE CAIXA PROFISSIONAL -->
+        <div id="tab-caixa" class="tab-content hidden">
+            <div class="panel">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+                    <h3><i class="fas fa-coins"></i> Fechamento de Caixa</h3>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <input type="date" id="cashier-date" style="width: auto;">
+                        <button class="btn-secondary" id="filter-date"><i class="fas fa-calendar"></i> Filtrar</button>
+                        <button class="btn-primary" id="print-cashier-report" style="width: auto;"><i class="fas fa-print"></i> Imprimir Relatório</button>
                     </div>
-                    <button class="btn btn-primary" id="add-product"><i class="fas fa-save"></i> Salvar Produto</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- MINHA LOJA -->
-        <div id="tab-minhaloja" class="tab-content hidden">
-            <div class="grid-2">
-                <div class="panel">
-                    <h3><i class="fas fa-store"></i> Informações da Loja</h3>
-                    <input type="text" id="shop-name" placeholder="Nome da Loja">
-                    <input type="text" id="shop-whatsapp" placeholder="WhatsApp (ex: 5511999999999)">
-                    <input type="text" id="shop-address" placeholder="Endereço da Loja">
-                    <h3 style="margin-top: 20px;"><i class="fas fa-toggle-on"></i> Status da Loja</h3>
-                    <div class="toggle-group">
-                        <span><i class="fas fa-motorcycle"></i> Delivery</span>
-                        <label class="switch"><input type="checkbox" id="delivery-enabled"><span class="slider"></span></label>
-                    </div>
-                    <div class="toggle-group">
-                        <span><i class="fas fa-store"></i> Retirada no Local</span>
-                        <label class="switch"><input type="checkbox" id="pickup-enabled"><span class="slider"></span></label>
-                    </div>
-                    <div class="toggle-group">
-                        <span><i class="fas fa-clock"></i> Loja Aberta</span>
-                        <label class="switch"><input type="checkbox" id="store-open"><span class="slider"></span></label>
-                    </div>
-                    <button class="btn btn-primary" id="save-store-settings" style="margin-top: 20px;"><i class="fas fa-save"></i> Salvar Configurações</button>
                 </div>
                 
-                <div class="panel">
-                    <h3><i class="fas fa-map-marker-alt"></i> Taxas de Entrega</h3>
-                    <div style="display: flex; gap: 8px; margin-bottom: 16px;">
-                        <input type="text" id="zone-name" placeholder="Região" style="flex: 1;">
-                        <input type="text" id="zone-cep" placeholder="CEP" style="flex: 1;">
-                        <input type="number" id="zone-fee" placeholder="Taxa R$" step="0.01" style="width: 100px;">
-                        <button class="btn btn-primary" id="add-zone" style="width: auto; padding: 12px 16px;"><i class="fas fa-plus"></i></button>
+                <!-- Cards de Resumo -->
+                <div class="cashier-stats">
+                    <div class="stat-box">
+                        <i class="fas fa-arrow-up" style="color: #10b981; font-size: 1.5rem;"></i>
+                        <h4>Total de Entradas</h4>
+                        <div class="stat-value" id="total-entradas">R$ 0,00</div>
                     </div>
-                    <div id="delivery-zones-list" style="max-height: 200px; overflow-y: auto;"></div>
-                    
-                    <div class="short-link-box">
-                        <i class="fab fa-whatsapp" style="font-size: 2rem; color: #25D366;"></i>
-                        <h3 style="margin: 10px 0;">📱 Link do Cardápio Online</h3>
-                        <div class="short-link" id="short-link-display" style="background:white; padding:10px; border-radius:10px; word-break:break-all; font-size:12px;">Carregando...</div>
-                        <button class="whatsapp-btn" id="send-whatsapp-btn"><i class="fab fa-whatsapp"></i> Enviar via WhatsApp</button>
-                        <button class="btn-secondary" id="copy-short-link" style="margin-top: 10px; width: 100%;"><i class="fas fa-copy"></i> Copiar Link</button>
+                    <div class="stat-box">
+                        <i class="fas fa-arrow-down" style="color: #ef4444; font-size: 1.5rem;"></i>
+                        <h4>Total de Saídas</h4>
+                        <div class="stat-value" id="total-saidas">R$ 0,00</div>
                     </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- CONFIGURAÇÕES -->
-        <div id="tab-configuracoes" class="tab-content hidden">
-            <div class="grid-2">
-                <div class="panel">
-                    <h3><i class="fas fa-lock"></i> Segurança - Usuário e Senha</h3>
-                    <input type="text" id="config-user" placeholder="Novo usuário admin">
-                    <input type="password" id="config-pass" placeholder="Nova senha">
-                    <input type="password" id="config-pass-confirm" placeholder="Confirmar nova senha">
-                    <div id="password-error" style="color:#ef4444; font-size:12px; margin:5px 0;"></div>
-                    
-                    <h3 style="margin-top: 20px;"><i class="fas fa-palette"></i> Personalização de Cores</h3>
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <label><strong>Cor Principal:</strong></label>
-                        <input type="color" id="color-primary" value="#f97316">
+                    <div class="stat-box">
+                        <i class="fas fa-wallet" style="color: #f59e0b; font-size: 1.5rem;"></i>
+                        <h4>Saldo do Dia</h4>
+                        <div class="stat-value" id="saldo-dia">R$ 0,00</div>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <label><strong>Cor Secundária:</strong></label>
-                        <input type="color" id="color-secondary" value="#dc2626">
+                    <div class="stat-box">
+                        <i class="fas fa-chart-line" style="color: #8b5cf6; font-size: 1.5rem;"></i>
+                        <h4>Total de Pedidos</h4>
+                        <div class="stat-value" id="total-pedidos">0</div>
                     </div>
-                    
-                    <div class="toggle-group">
-                        <span><i class="fas fa-moon"></i> Modo Escuro</span>
-                        <label class="switch"><input type="checkbox" id="dark-mode-toggle"><span class="slider"></span></label>
-                    </div>
-                    
-                    <button class="btn btn-primary" id="save-config-btn" style="margin-top: 20px;"><i class="fas fa-save"></i> Salvar Configurações</button>
                 </div>
                 
-                <div class="panel">
-                    <h3><i class="fas fa-info-circle"></i> Informações do Sistema</h3>
-                    <p><strong>Versão:</strong> 2.3.0</p>
-                    <p><strong>Status:</strong> <span id="info-status">Conectado</span></p>
-                    <p><strong>Banco de Dados:</strong> Firebase Realtime</p>
-                    <p><strong>Sincronização:</strong> Automática em tempo real</p>
-                    <hr style="margin: 20px 0;">
-                    <h3><i class="fas fa-globe"></i> Links Úteis</h3>
-                    <p><strong>Cardápio Online:</strong> <span id="online-menu-url" style="font-size: 11px; word-break: break-all;"></span></p>
-                    <button class="btn-secondary" id="copy-online-url" style="margin-top: 10px;"><i class="fas fa-copy"></i> Copiar Link do Cardápio</button>
-                </div>
-            </div>
-        </div>
-    </main>
-</div>
-
-<script>
-    // Firebase Config
-    const firebaseConfig = {
-        apiKey: "AIzaSyD8ENqoPMSO4XxP06-nsoIDiqcoh-xEDjs",
-        authDomain: "neomenudb.firebaseapp.com",
-        databaseURL: "https://neomenudb-default-rtdb.firebaseio.com",
-        projectId: "neomenudb",
-        storageBucket: "neomenudb.firebasestorage.app",
-        messagingSenderId: "567947601973",
-        appId: "1:567947601973:web:d3df013d722992e7eba97c"
-    };
-    
-    firebase.initializeApp(firebaseConfig);
-    const database = firebase.database();
-    
-    // Link do cardápio online
-    const ONLINE_MENU_URL = "https://tefhamburgueria-ctrl.github.io/neomenu-app/cardapio-online.html";
-    
-    let db = { products: [], settings: {}, deliveryZones: [], appConfig: {}, orders: [] };
-    let cart = [];
-    let currentPhotoBase64 = null;
-    let currentFilter = 'all';
-    
-    // Verificar login salvo
-    function checkSavedLogin() {
-        const savedUser = localStorage.getItem('neomenu_user');
-        const savedPass = localStorage.getItem('neomenu_pass');
-        if (savedUser && savedPass) {
-            document.getElementById('log-user').value = savedUser;
-            document.getElementById('log-pass').value = savedPass;
-            document.getElementById('remember-login').checked = true;
-            doLogin(true);
-        }
-    }
-    
-    async function doLogin(skipRedirect = false) {
-        const user = document.getElementById('log-user').value;
-        const pass = document.getElementById('log-pass').value;
-        const remember = document.getElementById('remember-login').checked;
-        
-        const configSnap = await database.ref('appConfig').once('value');
-        const appConfig = configSnap.exists() ? configSnap.val() : { adminUser: 'admin', adminPass: '123' };
-        
-        if (user === appConfig.adminUser && pass === appConfig.adminPass) {
-            sessionStorage.setItem('logged', 'true');
-            document.getElementById('login-error').innerHTML = '';
-            
-            if (remember) {
-                localStorage.setItem('neomenu_user', user);
-                localStorage.setItem('neomenu_pass', pass);
-            } else {
-                localStorage.removeItem('neomenu_user');
-                localStorage.removeItem('neomenu_pass');
-            }
-            
-            if (!skipRedirect) {
-                await initFirebaseAndShowAdmin();
-            }
-        } else {
-            document.getElementById('login-error').innerHTML = '❌ Usuário ou senha incorretos!';
-        }
-    }
-    
-    async function initFirebaseAndShowAdmin() {
-        await loadData();
-        showAdmin();
-        setupRealtimeSync();
-        setupEventListeners();
-        loadConfigToForm();
-        updateOnlineMenuUrl();
-        updatePendingBadge();
-        applyColors(db.appConfig);
-    }
-    
-    async function loadData() {
-        const productsSnap = await database.ref('products').once('value');
-        const settingsSnap = await database.ref('settings').once('value');
-        const zonesSnap = await database.ref('deliveryZones').once('value');
-        const configSnap = await database.ref('appConfig').once('value');
-        const ordersSnap = await database.ref('orders').once('value');
-        
-        db.products = productsSnap.exists() ? Object.values(productsSnap.val()) : [];
-        db.settings = settingsSnap.exists() ? settingsSnap.val() : {};
-        db.deliveryZones = zonesSnap.exists() ? Object.values(zonesSnap.val()) : [];
-        db.appConfig = configSnap.exists() ? configSnap.val() : { adminUser: 'admin', adminPass: '123', primaryColor: '#f97316', secondaryColor: '#dc2626', darkMode: false };
-        db.orders = ordersSnap.exists() ? Object.values(ordersSnap.val()) : [];
-        
-        if (db.products.length === 0) await addDefaultProducts();
-        if (db.deliveryZones.length === 0) await addDefaultZones();
-    }
-    
-    async function addDefaultProducts() {
-        const defaultProducts = [
-            { id: Date.now() + 1, nome: '🍔 Hambúrguer Artesanal', preco: 32.9, estoque: 20, foto: '' },
-            { id: Date.now() + 2, nome: '🍕 Pizza Margherita', preco: 49.9, estoque: 15, foto: '' },
-            { id: Date.now() + 3, nome: '🥗 Salada Caesar', preco: 28.5, estoque: 12, foto: '' }
-        ];
-        for (const product of defaultProducts) await database.ref('products/' + product.id).set(product);
-        db.products = defaultProducts;
-    }
-    
-    async function addDefaultZones() {
-        const defaultZones = [
-            { id: Date.now() + 1, nome: 'Centro', cep: '01000-000', valor: 6.0 },
-            { id: Date.now() + 2, nome: 'Norte', cep: '02000-000', valor: 12.0 },
-            { id: Date.now() + 3, nome: 'Sul', cep: '03000-000', valor: 8.0 }
-        ];
-        for (const zone of defaultZones) await database.ref('deliveryZones/' + zone.id).set(zone);
-        db.deliveryZones = defaultZones;
-    }
-    
-    function setupRealtimeSync() {
-        database.ref('.info/connected').on('value', (snap) => updateSyncStatus(snap.val() === true));
-        database.ref('products').on('value', (snapshot) => { db.products = snapshot.exists() ? Object.values(snapshot.val()) : []; renderMenu(); renderProductsList(); });
-        database.ref('settings').on('value', (snapshot) => { if (snapshot.exists()) { db.settings = snapshot.val(); loadSettingsToForm(); } });
-        database.ref('deliveryZones').on('value', (snapshot) => { db.deliveryZones = snapshot.exists() ? Object.values(snapshot.val()) : []; renderDeliveryZones(); });
-        database.ref('appConfig').on('value', (snapshot) => { if (snapshot.exists()) { db.appConfig = snapshot.val(); loadConfigToForm(); applyColors(db.appConfig); } });
-        
-        database.ref('orders').on('value', (snapshot) => {
-            const newOrders = snapshot.exists() ? Object.values(snapshot.val()) : [];
-            db.orders = newOrders;
-            renderActiveOrders();
-            updatePendingBadge();
-        });
-    }
-    
-    function updatePendingBadge() {
-        const pendingCount = db.orders.filter(o => o.status === 'pending' || o.status === 'preparing').length;
-        const badge = document.getElementById('pending-badge');
-        if (pendingCount > 0) {
-            badge.style.display = 'inline-block';
-            badge.textContent = pendingCount;
-        } else {
-            badge.style.display = 'none';
-        }
-    }
-    
-    function updateSyncStatus(isConnected) {
-        const statusDiv = document.getElementById('sync-status');
-        if (isConnected) { statusDiv.innerHTML = '✅ Sincronizado'; statusDiv.className = 'sync-status'; }
-        else { statusDiv.innerHTML = '⚠️ Offline'; statusDiv.className = 'sync-status offline'; }
-    }
-    
-    function updateOnlineMenuUrl() {
-        document.getElementById('online-menu-url').innerText = ONLINE_MENU_URL;
-        document.getElementById('short-link-display').innerHTML = `<i class="fas fa-link"></i> ${ONLINE_MENU_URL}`;
-        document.getElementById('short-link-display').setAttribute('data-url', ONLINE_MENU_URL);
-    }
-    
-    function sendToWhatsApp() {
-        const menuUrl = ONLINE_MENU_URL;
-        const shopName = db.settings.shopName || 'NeoMenu';
-        const whatsapp = db.settings.whatsapp || '';
-        const message = `🍽️ *${shopName}* - Cardápio Online%0A%0AFaça seu pedido: ${menuUrl}`;
-        window.open(`https://wa.me/55${whatsapp.replace(/\D/g, '')}?text=${message}`, '_blank');
-    }
-    
-    function copyShortLink() {
-        navigator.clipboard.writeText(ONLINE_MENU_URL);
-        alert('✅ Link copiado!');
-    }
-    
-    function copyOnlineUrl() {
-        navigator.clipboard.writeText(ONLINE_MENU_URL);
-        alert('✅ Link do cardápio copiado!');
-    }
-    
-    function loadSettingsToForm() {
-        document.getElementById('shop-name').value = db.settings.shopName || '';
-        document.getElementById('shop-whatsapp').value = db.settings.whatsapp || '';
-        document.getElementById('shop-address').value = db.settings.address || '';
-        document.getElementById('delivery-enabled').checked = db.settings.deliveryEnabled !== false;
-        document.getElementById('pickup-enabled').checked = db.settings.pickupEnabled !== false;
-        document.getElementById('store-open').checked = db.settings.storeOpen !== false;
-    }
-    
-    function loadConfigToForm() {
-        document.getElementById('config-user').value = db.appConfig.adminUser || 'admin';
-        document.getElementById('color-primary').value = db.appConfig.primaryColor || '#f97316';
-        document.getElementById('color-secondary').value = db.appConfig.secondaryColor || '#dc2626';
-        document.getElementById('dark-mode-toggle').checked = db.appConfig.darkMode || false;
-        if (db.appConfig.darkMode) document.body.classList.add('dark-mode');
-        else document.body.classList.remove('dark-mode');
-    }
-    
-    function applyColors(colors) {
-        if (colors.primaryColor) document.documentElement.style.setProperty('--primary-color', colors.primaryColor);
-        if (colors.secondaryColor) document.documentElement.style.setProperty('--primary-dark', colors.secondaryColor);
-    }
-    
-    function renderDeliveryZones() {
-        const container = document.getElementById('delivery-zones-list');
-        if (!container) return;
-        if (db.deliveryZones.length === 0) { container.innerHTML = '<div style="text-align:center; padding:20px;">Nenhuma região cadastrada</div>'; return; }
-        container.innerHTML = db.deliveryZones.map(zone => `<div style="display:flex; justify-content:space-between; align-items:center; padding:10px; border-bottom:1px solid var(--border-color);"><div><strong>${zone.nome}</strong><br><small>${zone.cep || 'Sem CEP'} - R$ ${zone.valor.toFixed(2)}</small></div><button class="btn-danger" onclick="deleteZone(${zone.id})">Excluir</button></div>`).join('');
-    }
-    
-    window.deleteZone = async (id) => { if (confirm('Remover região?')) await database.ref('deliveryZones/' + id).remove(); };
-    
-    // FUNÇÃO PARA EXCLUIR PEDIDO - NOVIDADE!
-    window.deleteOrder = async (orderId) => {
-        if (confirm('⚠️ Tem certeza que deseja EXCLUIR este pedido? Esta ação não pode ser desfeita!')) {
-            await database.ref('orders/' + orderId).remove();
-            alert('✅ Pedido excluído com sucesso!');
-        }
-    };
-    
-    function renderActiveOrders() {
-        const container = document.getElementById('active-orders-list');
-        if (!container) return;
-        
-        let filteredOrders = db.orders;
-        
-        if (currentFilter === 'active') filteredOrders = db.orders.filter(o => o.status !== 'cancelled' && o.status !== 'delivered');
-        else if (currentFilter === 'online') filteredOrders = db.orders.filter(o => o.source === 'online');
-        else if (currentFilter === 'manual') filteredOrders = db.orders.filter(o => o.source === 'manual');
-        else if (currentFilter === 'cancelled') filteredOrders = db.orders.filter(o => o.status === 'cancelled');
-        
-        if (filteredOrders.length === 0) {
-            container.innerHTML = '<div style="text-align:center; padding:40px; color:#94a3b8;">Nenhum pedido encontrado</div>';
-            return;
-        }
-        
-        container.innerHTML = filteredOrders.sort((a,b) => b.timestamp - a.timestamp).map(order => `
-            <div class="order-card ${order.status === 'cancelled' ? 'cancelled' : order.status}">
-                <div class="order-header">
-                    <div>
-                        <strong>${order.cliente}</strong>
-                        <span class="${order.source === 'online' ? 'badge-online' : 'badge-balcao'}">${order.source === 'online' ? '📱 Online' : '🏪 Balcão'}</span>
+                <!-- Detalhamento por Forma de Pagamento -->
+                <div class="grid-3" style="margin-bottom: 20px;">
+                    <div class="panel">
+                        <h4><i class="fas fa-money-bill"></i> Dinheiro</h4>
+                        <div id="total-dinheiro" style="font-size: 1.5rem; font-weight: 800; color: var(--primary-color);">R$ 0,00</div>
                     </div>
-                    <div>
-                        <span class="order-status status-${order.status === 'cancelled' ? 'cancelled' : order.status}">
-                            ${order.status === 'pending' ? '⏳ Pendente' : order.status === 'preparing' ? '🍳 Em preparo' : order.status === 'ready' ? '✅ Pronto' : order.status === 'cancelled' ? '❌ Cancelado' : '📦 Finalizado'}
-                        </span>
+                    <div class="panel">
+                        <h4><i class="fab fa-pix"></i> Pix</h4>
+                        <div id="total-pix" style="font-size: 1.5rem; font-weight: 800; color: var(--primary-color);">R$ 0,00</div>
+                    </div>
+                    <div class="panel">
+                        <h4><i class="fas fa-credit-card"></i> Cartões</h4>
+                        <div id="total-cartoes" style="font-size: 1.5rem; font-weight: 800; color: var(--primary-color);">R$ 0,00</div>
                     </div>
                 </div>
-                <div><small>${new Date(order.timestamp).toLocaleString()}</small></div>
-                <div class="order-items">
-                    ${order.itens.map(i => `<div>${i.quantidade}x ${i.nome} - R$ ${(i.preco * i.quantidade).toFixed(2)}</div>`).join('')}
-                </div>
-                <div><strong>Total: R$ ${order.total.toFixed(2)}</strong> - ${order.pagto}</div>
-                <div><small>Tipo: ${order.tipo === 'Delivery' ? '🚚 Delivery' : (order.tipo === 'Retirada' ? '🏪 Retirada' : '🍽️ Consumo')}</small></div>
-                ${order.endereco ? `<div><small>📍 ${order.endereco}</small></div>` : ''}
-                ${order.telefone ? `<div><small>📞 ${order.telefone}</small></div>` : ''}
                 
-                <div class="order-actions">
-                    ${order.status === 'pending' && order.status !== 'cancelled' ? `<button class="btn-preparing" onclick="updateOrderStatus('${order.id}', 'preparing')"><i class="fas fa-utensils"></i> Iniciar Preparo</button>` : ''}
-                    ${order.status === 'preparing' && order.status !== 'cancelled' ? `<button class="btn-ready" onclick="updateOrderStatus('${order.id}', 'ready')"><i class="fas fa-check-circle"></i> Marcar Pronto</button>` : ''}
-                    ${order.status !== 'cancelled' ? `<button class="btn-cancel-order" onclick="deleteOrder('${order.id}')"><i class="fas fa-trash-alt"></i> Excluir Pedido</button>` : ''}
-                    ${order.telefone ? `<button class="btn-whatsapp" onclick="sendWhatsAppMessage('${order.id}')"><i class="fab fa-whatsapp"></i> Notificar</button>` : ''}
-                </div>
-            </div>
-        `).join('');
-    }
+                <!-- Movimentações Manuais -->
+                <div class="grid-2">
+                    <div class="panel">
     
-    window.updateOrderStatus = async (orderId, newStatus) => {
-        const order = db.orders.find(o => o.id === orderId);
-        if (!order) return;
-        
-        await database.ref('orders/' + orderId).update({ status: newStatus });
-        
-        let statusText = newStatus === 'preparing' ? 'em preparo' : 'pronto';
-        
-        if (order.telefone) {
-            const message = `🍽️ *${db.settings.shopName || 'NeoMenu'}* - Seu pedido está ${statusText}!%0A%0A*Pedido #${order.id.slice(-6)}*%0A*Cliente:* ${order.cliente}%0A*Total:* R$ ${order.total.toFixed(2)}%0A%0AObrigado! 🚀`;
-            window.open(`https://wa.me/55${order.telefone.replace(/\D/g, '')}?text=${message}`, '_blank');
-        }
-        
-        alert(`✅ Pedido atualizado para ${statusText}!`);
-    };
-    
-    window.sendWhatsAppMessage = async (orderId) => {
-        const order = db.orders.find(o => o.id === orderId);
-        if (!order || !order.telefone) return;
-        
-        let message = order.status === 'ready' ? 
-            `🍽️ *${db.settings.shopName || 'NeoMenu'}* - Seu pedido está pronto!%0A%0A*Pedido #${order.id.slice(-6)}*%0A*Cliente:* ${order.cliente}%0A*Total:* R$ ${order.total.toFixed(2)}%0A%0A${order.tipo === 'Delivery' ? '🚚 Seu pedido saiu para entrega!' : '🍽️ Aguardamos você!'}%0A%0AObrigado! 🚀` :
-            `🍽️ *${db.settings.shopName || 'NeoMenu'}* - Seu pedido foi confirmado!%0A%0A*Pedido #${order.id.slice(-6)}*%0A*Cliente:* ${order.cliente}%0A*Total:* R$ ${order.total.toFixed(2)}%0A%0AAcompanhe o status! 🚀`;
-        
-        window.open(`https://wa.me/55${order.telefone.replace(/\D/g, '')}?text=${message}`, '_blank');
-    };
-    
-    function showAdmin() {
-        document.getElementById('page-login').classList.add('hidden');
-        document.getElementById('view-admin').classList.remove('hidden');
-        renderMenu(); renderProductsList(); renderCart(); renderActiveOrders();
-        loadSettingsToForm(); renderDeliveryZones(); loadConfigToForm();
-    }
-    
-    function setupEventListeners() {
-        document.querySelectorAll('.nav-link[data-tab]').forEach(link => link.addEventListener('click', () => switchTab(link.dataset.tab, link)));
-        document.getElementById('logout-btn').addEventListener('click', logout);
-        document.getElementById('finalize-sale').addEventListener('click', finalizeSale);
-        document.getElementById('add-product').addEventListener('click', addProduct);
-        document.getElementById('save-store-settings').addEventListener('click', saveStoreSettings);
-        document.getElementById('add-zone').addEventListener('click', addDeliveryZone);
-        document.getElementById('save-config-btn').addEventListener('click', saveConfig);
-        document.getElementById('send-whatsapp-btn').addEventListener('click', sendToWhatsApp);
-        document.getElementById('copy-short-link').addEventListener('click', copyShortLink);
-        document.getElementById('copy-online-url').addEventListener('click', copyOnlineUrl);
-        document.getElementById('search-pdv').addEventListener('input', () => renderMenu());
-        document.getElementById('dark-mode-toggle').addEventListener('change', (e) => { if(e.target.checked) document.body.classList.add('dark-mode'); else document.body.classList.remove('dark-mode'); });
-        document.getElementById('color-primary').addEventListener('input', (e) => document.documentElement.style.setProperty('--primary-color', e.target.value));
-        document.getElementById('color-secondary').addEventListener('input', (e) => document.documentElement.style.setProperty('--primary-dark', e.target.value));
-        
-        // Filtros
-        document.querySelectorAll('.filter-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                currentFilter = btn.dataset.filter;
-                renderActiveOrders();
-            });
-        });
-        
-        // Upload de foto
-        document.getElementById('upload-photo-btn')?.addEventListener('click', () => document.getElementById('photo-file').click());
-        document.getElementById('camera-btn')?.addEventListener('click', () => document.getElementById('camera-input').click());
-        document.getElementById('photo-file')?.addEventListener('change', (e) => handlePhoto(e.target.files[0]));
-        document.getElementById('camera-input')?.addEventListener('change', (e) => handlePhoto(e.target.files[0]));
-    }
-    
-    function handlePhoto(file) {
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                currentPhotoBase64 = event.target.result;
-                const preview = document.getElementById('photo-preview');
-                preview.src = currentPhotoBase64;
-                preview.style.display = 'block';
-            };
-            reader.readAsDataURL(file);
-        }
-    }
-    
-    function switchTab(tab, element) {
-        document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
-        document.getElementById('tab-' + tab).classList.remove('hidden');
-        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-        if (element) element.classList.add('active');
-        if (tab === 'minhaloja') { renderDeliveryZones(); updateOnlineMenuUrl(); }
-        if (tab === 'pedidos') { renderActiveOrders(); updatePendingBadge(); }
-    }
-    
-    async function saveConfig() {
-        const newUser = document.getElementById('config-user').value.trim();
-        const newPass = document.getElementById('config-pass').value;
-        const confirmPass = document.getElementById('config-pass-confirm').value;
-        
-        if (newPass !== confirmPass) {
-            document.getElementById('password-error').innerHTML = '❌ As senhas não coincidem!';
-            return;
-        }
-        document.getElementById('password-error').innerHTML = '';
-        
-        const newConfig = {
-            adminUser: newUser || 'admin',
-            adminPass: newPass || '123',
-            primaryColor: document.getElementById('color-primary').value,
-            secondaryColor: document.getElementById('color-secondary').value,
-            darkMode: document.getElementById('dark-mode-toggle').checked
-        };
-        
-        await database.ref('appConfig').set(newConfig);
-        alert('✅ Configurações salvas!');
-    }
-    
-    async function saveStoreSettings() {
-        const settings = {
-            shopName: document.getElementById('shop-name').value,
-            whatsapp: document.getElementById('shop-whatsapp').value,
-            address: document.getElementById('shop-address').value,
-            deliveryEnabled: document.getElementById('delivery-enabled').checked,
-            pickupEnabled: document.getElementById('pickup-enabled').checked,
-            storeOpen: document.getElementById('store-open').checked
-        };
-        await database.ref('settings').set(settings);
-        alert('✅ Configurações da loja salvas!');
-    }
-    
-    async function addDeliveryZone() {
-        const nome = document.getElementById('zone-name').value.trim();
-        const cep = document.getElementById('zone-cep').value.trim();
-        const valor = parseFloat(document.getElementById('zone-fee').value);
-        if (!nome || isNaN(valor)) return alert('Preencha todos os campos!');
-        await database.ref('deliveryZones/' + Date.now()).set({ id: Date.now(), nome, cep, valor });
-        document.getElementById('zone-name').value = ''; document.getElementById('zone-cep').value = ''; document.getElementById('zone-fee').value = '';
-        alert('✅ Região adicionada!');
-    }
-    
-    function renderMenu() {
-        const search = document.getElementById('search-pdv')?.value.toLowerCase() || '';
-        const filtered = db.products.filter(p => p.nome.toLowerCase().includes(search));
-        document.getElementById('pdv-menu').innerHTML = filtered.map(p => `<div class="item-card" onclick="addToCart(${p.id})"><span class="badge-estoque">${p.estoque}</span>${p.foto ? `<img src="${p.foto}">` : '<i class="fas fa-utensils" style="font-size:40px; margin:15px;"></i>'}<p><strong>${p.nome}</strong></p><b style="color:var(--primary-color);">R$ ${p.preco.toFixed(2)}</b></div>`).join('');
-    }
-    
-    window.addToCart = function(id) {
-        const product = db.products.find(p => p.id === id);
-        if (product && product.estoque > 0) {
-            const existing = cart.find(i => i.id === id);
-            if (existing) existing.qty++;
-            else cart.push({ ...product, qty: 1 });
-            renderCart();
-        } else alert('❌ Produto sem estoque!');
-    };
-    
-    function renderCart() {
-        let total = 0;
-        if (cart.length === 0) { document.getElementById('cart-list').innerHTML = '<div style="text-align:center; padding:20px;"><i class="fas fa-shopping-cart" style="font-size:3rem;"></i><p>Carrinho vazio</p></div>'; document.getElementById('cart-total').innerText = 'R$ 0,00'; return; }
-        document.getElementById('cart-list').innerHTML = cart.map((item, idx) => { total += item.preco * item.qty; return `<div class="cart-item"><div><strong>${item.nome}</strong><br><small>R$ ${item.preco.toFixed(2)}</small></div><div><button class="btn-danger" onclick="updateQty(${idx}, -1)">-</button> ${item.qty} <button class="btn-danger" onclick="updateQty(${idx}, 1)">+</button> <button class="btn-danger" onclick="removeFromCart(${idx})">✕</button></div></div>`; }).join('');
-        document.getElementById('cart-total').innerText = `R$ ${total.toFixed(2)}`;
-    }
-    
-    window.updateQty = function(idx, change) {
-        const item = cart[idx];
-        const newQty = item.qty + change;
-        if (newQty <= 0) cart.splice(idx, 1);
-        else if (newQty <= item.estoque) item.qty = newQty;
-        else alert('Quantidade máxima!');
-        renderCart();
-    };
-    
-    window.removeFromCart = function(idx) { cart.splice(idx, 1); renderCart(); };
-    
-    async function finalizeSale() {
-        const customer = document.getElementById('customer-name').value.trim();
-        if (!customer || cart.length === 0) return alert('Preencha o nome do cliente!');
-        const total = cart.reduce((s, i) => s + (i.preco * i.qty), 0);
-        
-        const order = {
-            id: Date.now().toString(),
-            timestamp: Date.now(),
-            cliente: customer,
-            telefone: '',
-            tipo: 'Consumo',
-            pagto: document.getElementById('payment-method').value,
-            total: total,
-            status: 'pending',
-            source: 'manual',
-            itens: cart.map(i => ({ nome: i.nome, quantidade: i.qty, preco: i.preco }))
-        };
-        
-        await database.ref('orders/' + order.id).set(order);
-        
-        for (let item of cart) {
-            const product = db.products.find(p => p.id === item.id);
-            if (product) { product.estoque -= item.qty; await database.ref('products/' + product.id).update({ estoque: product.estoque }); }
-        }
-        
-        cart = []; document.getElementById('customer-name').value = ''; renderCart();
-        alert('✅ Pedido criado!');
-        switchTab('pedidos', document.querySelector('.nav-link[data-tab="pedidos"]'));
-    }
-    
-    function renderProductsList() {
-        document.getElementById('products-list').innerHTML = db.products.map(p => `<div style="display:flex; justify-content:space-between; align-items:center; padding:12px; border-bottom:1px solid var(--border-color);"><div><strong>${p.nome}</strong><br><small>📦 ${p.estoque}</small></div><div>R$ ${p.preco.toFixed(2)}<button class="btn-danger" onclick="deleteProduct(${p.id})" style="margin-left:10px;">Excluir</button></div></div>`).join('');
-    }
-    
-    async function addProduct() {
-        const nome = document.getElementById('prod-name').value.trim();
-        const preco = parseFloat(document.getElementById('prod-price').value);
-        const estoque = parseInt(document.getElementById('prod-stock').value) || 0;
-        if (!nome || isNaN(preco)) return alert('Preencha todos os campos!');
-        const newProduct = { id: Date.now(), nome, preco, estoque, foto: currentPhotoBase64 || '' };
-        await database.ref('products/' + newProduct.id).set(newProduct);
-        document.getElementById('prod-name').value = ''; document.getElementById('prod-price').value = ''; document.getElementById('prod-stock').value = '';
-        document.getElementById('photo-preview').style.display = 'none'; currentPhotoBase64 = null;
-        alert('✅ Produto adicionado!');
-    }
-    
-    window.deleteProduct = async (id) => { if (confirm('Excluir produto?')) await database.ref('products/' + id).remove(); };
-    
-    function logout() { 
-        sessionStorage.removeItem('logged'); 
-        location.reload(); 
-    }
-    
-    // Inicialização
-    document.getElementById('login-btn').addEventListener('click', () => doLogin(false));
-    document.getElementById('log-pass').addEventListener('keypress', (e) => { if (e.key === 'Enter') doLogin(false); });
-    
-    checkSavedLogin();
-</script>
-</body>
-</html>
